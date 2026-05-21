@@ -1,0 +1,104 @@
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { AssetVisual } from '@/components/empire/AssetVisual';
+import { formatMoney } from '@/utils/format';
+import { PremiumCard } from '@/components/empire/PremiumCard';
+import { SectionHeader } from '@/components/empire/SectionHeader';
+import { premium } from '@/utils/premiumTheme';
+import { EmpireAction } from '@/game/reducer';
+import { OwnableAsset, OwnableCategory } from '@/game/types';
+
+type Props = {
+  title: string;
+  subtitle: string;
+  category: OwnableCategory;
+  items: OwnableAsset[];
+  cash: number;
+  dispatch: React.Dispatch<EmpireAction>;
+};
+
+export function OwnablesScreen({ title, subtitle, category, items, cash, dispatch }: Props) {
+  return (
+    <View style={styles.gap}>
+      <SectionHeader title={title} subtitle={subtitle} />
+      {items.map((item) => {
+        const disabled = item.owned || cash < item.price;
+        return (
+          <PremiumCard
+            key={item.id}
+            disabled={disabled}
+            onPress={() => dispatch({ type: 'buyOwnable', category, id: item.id })}>
+            <View style={styles.row}>
+              <AssetVisual
+                code={item.icon}
+                imageSlot={item.imageSlot}
+                imageUrl={item.imageUrl}
+                owned={item.owned}
+                size="lg"
+              />
+              <View style={styles.info}>
+                <Text style={styles.title}>{item.name}</Text>
+                <Text style={styles.meta}>{item.tier} - slot image IA: {item.imageSlot}</Text>
+                {item.passiveIncome > 0 ? (
+                  <Text style={styles.income}>+ € {formatMoney(item.passiveIncome)} / sec</Text>
+                ) : null}
+              </View>
+              <View style={styles.side}>
+                <Text style={item.owned ? styles.owned : styles.price}>
+                  {item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
+                </Text>
+              </View>
+            </View>
+          </PremiumCard>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  gap: {
+    gap: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  info: {
+    flex: 1,
+    minWidth: 0,
+  },
+  title: {
+    color: premium.colors.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  meta: {
+    color: premium.colors.muted,
+    fontSize: 11,
+    marginTop: 4,
+  },
+  income: {
+    color: premium.colors.success,
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  side: {
+    maxWidth: 94,
+  },
+  price: {
+    color: premium.colors.goldBright,
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  owned: {
+    color: premium.colors.success,
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+});
