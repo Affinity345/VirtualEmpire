@@ -8,9 +8,10 @@ type Props = {
   cars: OwnableAsset[];
   luxury: OwnableAsset[];
   cash: number;
+  level: number;
   dispatch: React.Dispatch<EmpireAction>;
 };
 
-export function CarsScreen({ cars, luxury, cash, dispatch }: Props) {
-  return <GarageScreen cars={cars} luxury={luxury} cash={cash} dispatch={dispatch} />;
+export function CarsScreen({ cars, luxury, cash, level, dispatch }: Props) {
+  return <GarageScreen cars={cars} luxury={luxury} cash={cash} level={level} dispatch={dispatch} />;
 }

@@ -3,7 +3,13 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createInitialState } from '@/game/initialState';
 import { empireReducer } from '@/game/reducer';
 import { getStats } from '@/game/selectors';
-import { clearEmpireState, loadEmpireState, saveEmpireState } from '@/game/storage';
+import {
+  clearEmpireState,
+  loadCloudSnapshot,
+  loadEmpireState,
+  saveCloudSnapshot,
+  saveEmpireState,
+} from '@/game/storage';
 
 export const useEmpireGame = () => {
   const [state, dispatch] = useReducer(empireReducer, undefined, createInitialState);
@@ -51,11 +57,24 @@ export const useEmpireGame = () => {
     dispatch({ type: 'reset' });
   };
 
+  const saveCloud = async () => {
+    await saveCloudSnapshot(state);
+  };
+
+  const recoverCloud = async () => {
+    const cloudState = await loadCloudSnapshot();
+    if (cloudState) {
+      dispatch({ type: 'hydrate', state: cloudState });
+    }
+  };
+
   return {
     state,
     stats,
     ready,
     dispatch,
     reset,
+    saveCloud,
+    recoverCloud,
   };
 };

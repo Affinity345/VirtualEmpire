@@ -30,6 +30,7 @@ export function EmpireHeader({ state, stats }: Props) {
         <Text style={styles.meta}>+ € {formatMoney(stats.totalIncome)} / sec</Text>
         <Text style={styles.meta}>Niv. {state.level}</Text>
         <Text style={styles.meta}>XP {state.xp}/{state.level * 100}</Text>
+        <Text style={styles.meta}>Prestige x{stats.prestigeMultiplier.toFixed(2)}</Text>
       </View>
     </View>
   );

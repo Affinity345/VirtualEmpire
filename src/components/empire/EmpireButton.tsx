@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, Vibration } from 'react-native';
 
 import { premium } from '@/utils/premiumTheme';
 
@@ -11,11 +11,16 @@ type Props = {
 };
 
 export function EmpireButton({ label, tone = 'gold', disabled, onPress }: Props) {
+  const press = () => {
+    Vibration.vibrate(18);
+    onPress();
+  };
+
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
-      onPress={onPress}
+      onPress={press}
       style={({ pressed }) => [
         styles.button,
         tone === 'dark' && styles.dark,

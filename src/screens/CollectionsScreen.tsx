@@ -7,10 +7,12 @@ import { OwnableAsset } from '@/game/types';
 type Props = {
   items: OwnableAsset[];
   cash: number;
+  level: number;
+  prestigeMultiplier: number;
   dispatch: React.Dispatch<EmpireAction>;
 };
 
-export function CollectionsScreen({ items, cash, dispatch }: Props) {
+export function CollectionsScreen({ items, cash, level, prestigeMultiplier, dispatch }: Props) {
   return (
     <OwnablesScreen
       title="Collections rares"
@@ -18,6 +20,8 @@ export function CollectionsScreen({ items, cash, dispatch }: Props) {
       category="collections"
       items={items}
       cash={cash}
+      level={level}
+      prestigeMultiplier={prestigeMultiplier}
       dispatch={dispatch}
     />
   );

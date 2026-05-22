@@ -28,7 +28,7 @@ export function AssetVisual({ code, imageSlot, imageUrl, owned, size = 'sm' }: P
         />
       ) : null}
       <View style={[styles.overlay, image.source ? styles.imageOverlay : undefined]} />
-      <Text style={styles.code}>{code}</Text>
+      {image.source ? null : <Text style={styles.code}>{code}</Text>}
     </View>
   );
 }

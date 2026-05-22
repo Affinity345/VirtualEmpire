@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { buildMarket } from '@/data/empireCatalog';
 import { SAVE_VERSION, createInitialState } from '@/game/initialState';
+import { getStats } from '@/game/selectors';
 import { BusinessAsset, EmpireState, MarketAsset, OwnableAsset } from '@/game/types';
+import { getEnterpriseProgressRate } from '@/utils/enterprise';
 
 const SAVE_KEY = 'virtual-empire/save-v1';
 
@@ -20,7 +22,7 @@ export const loadEmpireState = async (): Promise<EmpireState> => {
       return createInitialState();
     }
 
-    return normalizeEmpireState(parsed);
+    return applyOfflineProgress(normalizeEmpireState(parsed));
   } catch {
     return createInitialState();
   }
@@ -36,6 +38,16 @@ const normalizeEmpireState = (state: EmpireState): EmpireState => {
     taxDebt: state.taxDebt ?? 0,
     lastSeizureAmount: state.lastSeizureAmount ?? 0,
     seizureCount: state.seizureCount ?? 0,
+    prestigeCount: state.prestigeCount ?? 0,
+    prestigePoints: state.prestigePoints ?? 0,
+    totalPrestigePoints: state.totalPrestigePoints ?? state.prestigePoints ?? 0,
+    highestNetWorth: state.highestNetWorth ?? 0,
+    playerProfile: state.playerProfile,
+    adRewards: state.adRewards ?? fresh.adRewards,
+    dailyRewards: state.dailyRewards ?? fresh.dailyRewards,
+    economyEvent: state.economyEvent,
+    cashPopup: state.cashPopup,
+    offlineSummary: state.offlineSummary,
     businesses: mergeBusinesses(fresh.businesses, state.businesses),
     realEstate: mergeOwnables(fresh.realEstate, state.realEstate),
     cars: mergeOwnables(fresh.cars, state.cars),
@@ -76,7 +88,7 @@ const mergeMarket = (fresh: MarketAsset[], saved: MarketAsset[]) =>
       dayOpen: hasAberrantPrice || hasStaleSessionOpen ? price : savedDayOpen,
       momentum: previous.momentum ?? asset.momentum,
       spread: previous.spread ?? asset.spread,
-      volume: previous.volume ?? asset.volume,
+      volume: Math.min(MAX_MARKET_VOLUME, previous.volume ?? asset.volume),
       risk: previous.risk ?? asset.risk,
     };
   });
@@ -84,7 +96,25 @@ const mergeMarket = (fresh: MarketAsset[], saved: MarketAsset[]) =>
 const mergeBusinesses = (fresh: BusinessAsset[], saved: BusinessAsset[]) =>
   fresh.map((business) => {
     const previous = saved.find((item) => item.id === business.id);
-    return previous ? { ...business, level: previous.level } : business;
+    return previous
+      ? {
+          ...business,
+          level: previous.level,
+          employees: previous.employees ?? business.employees,
+          vehicles: previous.vehicles ?? business.vehicles,
+          buildings: previous.buildings ?? business.buildings,
+          resources: previous.resources ?? business.resources,
+          projectName: previous.projectName ?? business.projectName,
+          projectProgress: previous.projectProgress ?? business.projectProgress,
+          quality: previous.quality ?? business.quality,
+          maintenance: previous.maintenance ?? business.maintenance,
+          efficiency: previous.efficiency ?? business.efficiency,
+          reputation: previous.reputation ?? business.reputation,
+          enterpriseTaxDebt: previous.enterpriseTaxDebt ?? 0,
+          auditRisk: previous.auditRisk ?? business.auditRisk,
+          synergyBonus: previous.synergyBonus ?? 0,
+        }
+      : business;
   });
 
 const mergeOwnables = (fresh: OwnableAsset[], saved: OwnableAsset[]) =>
@@ -103,6 +133,76 @@ export const saveEmpireState = async (state: EmpireState) => {
   );
 };
 
+export const saveCloudSnapshot = async (state: EmpireState) => {
+  await AsyncStorage.setItem(
+    CLOUD_SAVE_KEY,
+    JSON.stringify({
+      ...state,
+      playerProfile: state.playerProfile
+        ? { ...state.playerProfile, lastCloudSyncAt: Date.now() }
+        : state.playerProfile,
+      lastSavedAt: Date.now(),
+    }),
+  );
+};
+
+export const loadCloudSnapshot = async (): Promise<EmpireState | undefined> => {
+  const raw = await AsyncStorage.getItem(CLOUD_SAVE_KEY);
+  if (!raw) return undefined;
+
+  try {
+    return normalizeEmpireState(JSON.parse(raw) as EmpireState);
+  } catch {
+    return undefined;
+  }
+};
+
 export const clearEmpireState = async () => {
   await AsyncStorage.removeItem(SAVE_KEY);
+};
+
+const MAX_MARKET_VOLUME = 999000000000;
+const CLOUD_SAVE_KEY = 'virtual-empire/cloud-snapshot-v1';
+
+const applyOfflineProgress = (state: EmpireState): EmpireState => {
+  if (!state.lastSavedAt) return state;
+  const secondsAway = Math.min(8 * 3600, Math.max(0, Math.floor((Date.now() - state.lastSavedAt) / 1000)));
+  if (secondsAway < 60) return state;
+
+  const stats = getStats(state);
+  const cashEarned = Math.floor(stats.totalIncome * secondsAway * 0.65);
+  const taxesAdded = Math.floor(cashEarned * 0.08);
+  let projectsCompleted = 0;
+
+  const businesses = state.businesses.map((business) => {
+    if (business.level <= 0 || business.projectProgress >= 100) return business;
+    const nextProgress = Math.min(100, business.projectProgress + getEnterpriseProgressRate(business) * secondsAway);
+    if (nextProgress >= 100) projectsCompleted += 1;
+    return {
+      ...business,
+      projectProgress: nextProgress,
+      resources: business.resources + business.employees * secondsAway * 0.03,
+    };
+  });
+
+  return {
+    ...state,
+    cash: state.cash + cashEarned,
+    taxDebt: state.taxDebt + taxesAdded,
+    totalEarned: state.totalEarned + cashEarned,
+    businesses,
+    offlineSummary: {
+      secondsAway,
+      cashEarned,
+      taxesAdded,
+      projectsCompleted,
+      events: projectsCompleted > 0 ? ['Projets termines pendant ton absence'] : ['Empire actif hors ligne'],
+      shown: false,
+    },
+    cashPopup: {
+      amount: cashEarned,
+      label: 'Revenus hors ligne',
+      nonce: Date.now(),
+    },
+  };
 };

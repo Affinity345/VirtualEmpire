@@ -6,13 +6,11 @@ import { EmpireTab } from '@/game/types';
 
 const tabs: { id: EmpireTab; label: string }[] = [
   { id: 'dashboard', label: 'Empire' },
-  { id: 'business', label: 'Biz' },
-  { id: 'trading', label: 'Trade' },
+  { id: 'business', label: 'Entreprise' },
+  { id: 'investments', label: 'Invest' },
   { id: 'bank', label: 'Banque' },
-  { id: 'realEstate', label: 'Immo' },
-  { id: 'cars', label: 'Garage' },
-  { id: 'luxury', label: 'Luxe' },
-  { id: 'collections', label: 'Rares' },
+  { id: 'wealth', label: 'Patrimoine' },
+  { id: 'profile', label: 'Profil' },
   { id: 'missions', label: 'Missions' },
   { id: 'stats', label: 'Stats' },
 ];

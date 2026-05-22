@@ -9,17 +9,22 @@ import { SectionHeader } from '@/components/empire/SectionHeader';
 import { premium } from '@/utils/premiumTheme';
 import { EmpireAction } from '@/game/reducer';
 import { OwnableAsset } from '@/game/types';
+import { confirmAction } from '@/utils/confirmAction';
+import { getResalePrice } from '@/utils/resale';
 
 type Props = {
   cars: OwnableAsset[];
   luxury: OwnableAsset[];
   cash: number;
+  level: number;
   dispatch: React.Dispatch<EmpireAction>;
 };
 
-export function GarageScreen({ cars, luxury, cash, dispatch }: Props) {
+export function GarageScreen({ cars, luxury, cash, level, dispatch }: Props) {
   const ownedCars = cars.filter((car) => car.owned);
   const ownedLuxury = luxury.filter((item) => item.owned);
+  const unlockedCars = cars.filter((car) => car.owned || level >= car.unlockLevel).length;
+  const unlockedLuxury = luxury.filter((item) => item.owned || level >= item.unlockLevel).length;
   const garageValue = [...ownedCars, ...ownedLuxury].reduce((sum, item) => sum + item.price, 0);
   const flagship = ownedCars.at(-1) ?? ownedLuxury.at(-1) ?? cars[0] ?? luxury[0];
 
@@ -52,8 +57,12 @@ export function GarageScreen({ cars, luxury, cash, dispatch }: Props) {
           <GarageStat label="Luxe stocke" value={`${ownedLuxury.length}/${luxury.length}`} />
         </View>
         <View style={styles.statsRow}>
+          <GarageStat label="Debloques" value={`${unlockedCars + unlockedLuxury}/${cars.length + luxury.length}`} />
           <GarageStat label="Capacite" value={`${ownedCars.length + ownedLuxury.length}/${cars.length + luxury.length}`} />
+        </View>
+        <View style={styles.statsRow}>
           <GarageStat label="Valeur stockee" value={`€ ${formatMoney(garageValue)}`} />
+          <GarageStat label="Raretés" value="5 tiers" />
         </View>
       </PremiumCard>
 
@@ -65,6 +74,7 @@ export function GarageScreen({ cars, luxury, cash, dispatch }: Props) {
           index={index}
           category="cars"
           cash={cash}
+          level={level}
           dispatch={dispatch}
         />
       ))}
@@ -77,6 +87,7 @@ export function GarageScreen({ cars, luxury, cash, dispatch }: Props) {
           index={index}
           category="luxury"
           cash={cash}
+          level={level}
           dispatch={dispatch}
         />
       ))}
@@ -89,19 +100,29 @@ function GarageItem({
   index,
   category,
   cash,
+  level,
   dispatch,
 }: {
   item: OwnableAsset;
   index: number;
   category: 'cars' | 'luxury';
   cash: number;
+  level: number;
   dispatch: React.Dispatch<EmpireAction>;
 }) {
-  const disabled = item.owned || cash < item.price;
+  const locked = !item.owned && level < item.unlockLevel;
+  const disabled = locked || cash < item.price;
+  const resalePrice = getResalePrice(item.price);
   const rarity = index >= 96 ? 'Mythique' : index >= 48 ? 'Empire' : index >= 20 ? 'Elite' : 'Signature';
   const primarySpec = category === 'cars' ? `Performance ${86 + (index % 24) * 3}` : `Prestige ${88 + (index % 24) * 2}`;
   const secondarySpec = category === 'cars' ? `Prestige ${78 + (index % 24) * 4}` : `Securite coffre ${92 + (index % 12)}`;
   const ownedLabel = category === 'cars' ? 'Dans ton garage' : 'Dans ton coffre';
+  const sellItem = () =>
+    confirmAction(
+      'Confirmer la vente',
+      `Vendre ${item.name} pour € ${formatMoney(resalePrice)} ?`,
+      () => dispatch({ type: 'sellOwnable', category, id: item.id }),
+    );
 
   return (
     <PremiumCard style={styles.carCard}>
@@ -114,27 +135,35 @@ function GarageItem({
             owned={item.owned}
             size="lg"
           />
-          <Text style={styles.slot}>{item.imageSlot}</Text>
         </View>
         <View style={styles.carInfo}>
           <Text style={styles.carName}>{item.name}</Text>
-          <Text style={styles.meta}>{item.tier} - {rarity}</Text>
+          <Text style={styles.meta}>{item.tier} - {item.rarity} - {rarity}</Text>
           <View style={styles.specRow}>
             <Text style={styles.spec}>{primarySpec}</Text>
             <Text style={styles.spec}>{secondarySpec}</Text>
           </View>
+          {locked ? <Text style={styles.locked}>Debloque au niveau {item.unlockLevel}</Text> : null}
         </View>
       </View>
 
       <View style={styles.buyRow}>
         <Text style={item.owned ? styles.owned : styles.price}>
-          {item.owned ? ownedLabel : `€ ${formatMoney(item.price)}`}
+          {locked
+            ? `Niv. ${item.unlockLevel}`
+            : item.owned
+              ? `${ownedLabel} - Revente € ${formatMoney(resalePrice)}`
+              : `€ ${formatMoney(item.price)}`}
         </Text>
         <EmpireButton
-          label={item.owned ? 'Stocke' : 'Acheter'}
-          tone={item.owned ? 'dark' : 'gold'}
-          disabled={disabled}
-          onPress={() => dispatch({ type: 'buyOwnable', category, id: item.id })}
+          label={item.owned ? 'Vendre' : 'Acheter'}
+          tone={item.owned ? 'danger' : 'gold'}
+          disabled={!item.owned && disabled}
+          onPress={
+            item.owned
+              ? sellItem
+              : () => dispatch({ type: 'buyOwnable', category, id: item.id })
+          }
         />
       </View>
     </PremiumCard>
@@ -231,12 +260,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 8,
   },
-  slot: {
-    color: premium.colors.muted,
-    fontSize: 9,
-    marginTop: 8,
-    textAlign: 'center',
-  },
   carInfo: {
     flex: 1,
     minWidth: 0,
@@ -250,6 +273,12 @@ const styles = StyleSheet.create({
     color: premium.colors.muted,
     fontSize: 12,
     marginTop: 5,
+  },
+  locked: {
+    color: premium.colors.champagne,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 8,
   },
   specRow: {
     flexDirection: 'row',
