@@ -15,7 +15,7 @@ type Props = {
 export function StatsScreen({ state, stats }: Props) {
   const rows = [
     ['Patrimoine net', `€ ${formatMoney(stats.netWorth)}`],
-    ['Cash', `€ ${formatMoney(state.cash)}`],
+    ['Cash', `€ ${formatMoney(stats.cash)}`],
     ['Banque', `€ ${formatMoney(state.bank)}`],
     ['Impots a payer', `€ ${formatMoney(state.taxDebt)}`],
     ['Saisies fiscales', state.seizureCount.toString()],

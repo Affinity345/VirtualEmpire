@@ -10,6 +10,7 @@ import { premium } from '@/utils/premiumTheme';
 import { EmpireAction } from '@/game/reducer';
 import { OwnableAsset } from '@/game/types';
 import { confirmAction } from '@/utils/confirmAction';
+import { canBuyOwnable, getOwnableBuyBlock, isOwnableLevelGated } from '@/utils/progression';
 import { getResalePrice } from '@/utils/resale';
 
 type Props = {
@@ -23,8 +24,8 @@ type Props = {
 export function GarageScreen({ cars, luxury, cash, level, dispatch }: Props) {
   const ownedCars = cars.filter((car) => car.owned);
   const ownedLuxury = luxury.filter((item) => item.owned);
-  const unlockedCars = cars.filter((car) => car.owned || level >= car.unlockLevel).length;
-  const unlockedLuxury = luxury.filter((item) => item.owned || level >= item.unlockLevel).length;
+  const availableCars = cars.filter((car) => car.owned || !isOwnableLevelGated(car) || level >= car.unlockLevel).length;
+  const availableLuxury = luxury.filter((item) => item.owned || !isOwnableLevelGated(item) || level >= item.unlockLevel).length;
   const garageValue = [...ownedCars, ...ownedLuxury].reduce((sum, item) => sum + item.price, 0);
   const flagship = ownedCars.at(-1) ?? ownedLuxury.at(-1) ?? cars[0] ?? luxury[0];
 
@@ -57,7 +58,7 @@ export function GarageScreen({ cars, luxury, cash, level, dispatch }: Props) {
           <GarageStat label="Luxe stocke" value={`${ownedLuxury.length}/${luxury.length}`} />
         </View>
         <View style={styles.statsRow}>
-          <GarageStat label="Debloques" value={`${unlockedCars + unlockedLuxury}/${cars.length + luxury.length}`} />
+          <GarageStat label="Disponibles" value={`${availableCars + availableLuxury}/${cars.length + luxury.length}`} />
           <GarageStat label="Capacite" value={`${ownedCars.length + ownedLuxury.length}/${cars.length + luxury.length}`} />
         </View>
         <View style={styles.statsRow}>
@@ -110,8 +111,9 @@ function GarageItem({
   level: number;
   dispatch: React.Dispatch<EmpireAction>;
 }) {
-  const locked = !item.owned && level < item.unlockLevel;
-  const disabled = locked || cash < item.price;
+  const locked = !item.owned && isOwnableLevelGated(item) && level < item.unlockLevel;
+  const disabled = !item.owned && !canBuyOwnable(item, cash, level);
+  const buyBlock = getOwnableBuyBlock(item, cash, level);
   const resalePrice = getResalePrice(item.price);
   const rarity = index >= 96 ? 'Mythique' : index >= 48 ? 'Empire' : index >= 20 ? 'Elite' : 'Signature';
   const primarySpec = category === 'cars' ? `Performance ${86 + (index % 24) * 3}` : `Prestige ${88 + (index % 24) * 2}`;
@@ -143,14 +145,15 @@ function GarageItem({
             <Text style={styles.spec}>{primarySpec}</Text>
             <Text style={styles.spec}>{secondarySpec}</Text>
           </View>
-          {locked ? <Text style={styles.locked}>Debloque au niveau {item.unlockLevel}</Text> : null}
+          {locked ? <Text style={styles.locked}>Endgame niveau {item.unlockLevel}</Text> : null}
+          {!locked && buyBlock ? <Text style={styles.locked}>{buyBlock}</Text> : null}
         </View>
       </View>
 
       <View style={styles.buyRow}>
         <Text style={item.owned ? styles.owned : styles.price}>
           {locked
-            ? `Niv. ${item.unlockLevel}`
+            ? 'Endgame'
             : item.owned
               ? `${ownedLabel} - Revente € ${formatMoney(resalePrice)}`
               : `€ ${formatMoney(item.price)}`}

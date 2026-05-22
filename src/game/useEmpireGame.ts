@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
+import { initializeAdMob } from '@/ads/adMob';
 import { createInitialState } from '@/game/initialState';
 import { empireReducer } from '@/game/reducer';
 import { getStats } from '@/game/selectors';
@@ -15,6 +16,7 @@ export const useEmpireGame = () => {
   const [state, dispatch] = useReducer(empireReducer, undefined, createInitialState);
   const [ready, setReady] = useState(false);
   const hydrated = useRef(false);
+  const lastTickAt = useRef(Date.now());
   const stats = useMemo(() => getStats(state), [state]);
 
   useEffect(() => {
@@ -23,6 +25,7 @@ export const useEmpireGame = () => {
     loadEmpireState().then((savedState) => {
       if (!mounted) return;
       dispatch({ type: 'hydrate', state: savedState });
+      lastTickAt.current = Date.now();
       hydrated.current = true;
       setReady(true);
     });
@@ -33,7 +36,17 @@ export const useEmpireGame = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => dispatch({ type: 'tick' }), 1000);
+    initializeAdMob();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const deltaSeconds = Math.min(5, Math.max(0.25, (now - lastTickAt.current) / 1000));
+      lastTickAt.current = now;
+      dispatch({ type: 'tick', deltaSeconds });
+    }, 1000);
+
     return () => clearInterval(timer);
   }, []);
 

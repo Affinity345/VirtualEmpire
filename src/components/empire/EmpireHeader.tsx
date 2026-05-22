@@ -24,10 +24,13 @@ export function EmpireHeader({ state, stats }: Props) {
       </View>
       <View style={styles.cashPanel}>
         <Text style={styles.cashLabel}>Cash disponible</Text>
-        <Text style={styles.cash}>€ {formatMoney(state.cash)}</Text>
+        <Text style={styles.cash}>€ {formatMoney(stats.cash)}</Text>
+        <Text style={styles.cashExact}>€ {Math.floor(stats.cash).toLocaleString('fr-FR')}</Text>
       </View>
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>+ € {formatMoney(stats.totalIncome)} / sec</Text>
+        <Text style={styles.meta}>+ € {formatMoney(stats.netIncomePerSecond)} / sec</Text>
+        <Text style={styles.meta}>Paiement dans {Math.ceil(stats.passivePayoutSecondsRemaining)}s</Text>
+        <Text style={styles.meta}>Prochain + € {formatMoney(stats.nextPassivePayout)}</Text>
         <Text style={styles.meta}>Niv. {state.level}</Text>
         <Text style={styles.meta}>XP {state.xp}/{state.level * 100}</Text>
         <Text style={styles.meta}>Prestige x{stats.prestigeMultiplier.toFixed(2)}</Text>
@@ -90,6 +93,12 @@ const styles = StyleSheet.create({
     color: premium.colors.text,
     fontSize: 42,
     fontWeight: '900',
+    marginTop: 4,
+  },
+  cashExact: {
+    color: premium.colors.champagne,
+    fontSize: 12,
+    fontWeight: '800',
     marginTop: 4,
   },
   metaRow: {

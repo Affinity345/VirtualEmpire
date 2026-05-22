@@ -1,20 +1,29 @@
 import { createInitialState } from '@/game/initialState';
-import { getMetricValue, getPrestigeGain, getStats } from '@/game/selectors';
-import { AuthProvider, EmpireState, OwnableCategory } from '@/game/types';
+import { PASSIVE_PAYOUT_INTERVAL_SECONDS, getMetricValue, getPrestigeGain, getStats } from '@/game/selectors';
+import { AdRewardType, AuthProvider, EmpireState, OwnableCategory } from '@/game/types';
+import { getAdCooldownRemaining, getRewardedAdRewardCash, getRewardedAdsWatchedToday } from '@/ads/adMob';
+import { buildBusinesses } from '@/data/empireCatalog';
 import {
-  getEnterpriseMaintenanceCost,
   getEnterpriseProgressRate,
   getEnterpriseResourcesPerTick,
   getEnterpriseStatus,
   getEnterpriseTaxLimit,
 } from '@/utils/enterprise';
+import {
+  BUSINESS_MAX_LEVEL,
+  canBuyOwnable,
+  canFoundBusiness,
+  getBusinessFoundingCost,
+  getBusinessResalePrice,
+} from '@/utils/progression';
 import { getResalePrice } from '@/utils/resale';
 
 export type EmpireAction =
   | { type: 'hydrate'; state: EmpireState }
-  | { type: 'tick' }
+  | { type: 'tick'; deltaSeconds?: number }
   | { type: 'marketTick' }
   | { type: 'upgradeBusiness'; id: string }
+  | { type: 'sellBusiness'; id: string }
   | { type: 'buyOwnable'; category: OwnableCategory; id: string }
   | { type: 'sellOwnable'; category: OwnableCategory; id: string }
   | { type: 'buyMarket'; id: string }
@@ -30,7 +39,7 @@ export type EmpireAction =
   | { type: 'prestige' }
   | { type: 'connectPlayer'; provider: AuthProvider }
   | { type: 'disconnectPlayer' }
-  | { type: 'claimRewardAd'; reward: 'cash' | 'doubleIncome' | 'skipTime' }
+  | { type: 'claimRewardAd'; reward: AdRewardType }
   | { type: 'buyNoAds' }
   | { type: 'claimDailyReward' }
   | { type: 'openDailyChest' }
@@ -63,44 +72,50 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
       return action.state;
 
     case 'tick': {
-      const { totalIncome } = getStats(state);
-      const taxableIncome = Math.floor(totalIncome * TAX_RATE);
-      const maintenanceCost = state.businesses.reduce(
-        (sum, business) =>
-          sum + (business.level > 0 ? getEnterpriseMaintenanceCost(business) : 0),
-        0,
-      );
-      const netIncome = Math.max(0, totalIncome - maintenanceCost);
+      const stats = getStats(state);
+      const deltaSeconds = Math.max(0, Math.min(10, action.deltaSeconds ?? 1));
+      const passiveElapsed = (state.passiveIncomeElapsed ?? 0) + deltaSeconds;
+      const completedPayouts = Math.floor(passiveElapsed / PASSIVE_PAYOUT_INTERVAL_SECONDS);
+      const passiveIncomeElapsed = passiveElapsed % PASSIVE_PAYOUT_INTERVAL_SECONDS;
+      const earnedIncome = stats.nextPassivePayout * completedPayouts;
+      const taxableIncome = Math.floor(earnedIncome * TAX_RATE);
+      const nextSecondsPlayed = state.secondsPlayed + deltaSeconds;
+      const previousWholeSecond = Math.floor(state.secondsPlayed);
+      const nextWholeSecond = Math.floor(nextSecondsPlayed);
       const nextState = {
         ...state,
-        cash: state.cash + netIncome,
+        cash: state.cash + earnedIncome,
         taxDebt: state.taxDebt + taxableIncome,
-        lastSeizureAmount: 0,
-        totalEarned: state.totalEarned + netIncome,
-        highestNetWorth: Math.max(state.highestNetWorth, getStats(state).netWorth),
-        secondsPlayed: state.secondsPlayed + 1,
-        businesses: simulateBusinesses(state.businesses),
+        totalEarned: state.totalEarned + earnedIncome,
+        highestNetWorth: Math.max(state.highestNetWorth, stats.netWorth),
+        secondsPlayed: nextSecondsPlayed,
+        passiveIncomeElapsed,
+        businesses: simulateBusinesses(state.businesses, deltaSeconds),
         economyEvent: state.economyEvent
           ? {
               ...state.economyEvent,
-              secondsRemaining: state.economyEvent.secondsRemaining - 1,
+              secondsRemaining: state.economyEvent.secondsRemaining - deltaSeconds,
             }
-          : maybeCreateEconomyEvent(state.secondsPlayed),
-        cashPopup: netIncome > 0 ? createCashPopup(netIncome, 'Revenu net', state) : state.cashPopup,
+          : maybeCreateEconomyEvent(previousWholeSecond, nextWholeSecond),
+        cashPopup:
+          earnedIncome > 0 ? createCashPopup(earnedIncome, 'Revenus reçus', state) : state.cashPopup,
         adRewards: {
           ...state.adRewards,
-          bonusSecondsRemaining: Math.max(0, state.adRewards.bonusSecondsRemaining - 1),
-          bonusMultiplier: state.adRewards.bonusSecondsRemaining > 1 ? state.adRewards.bonusMultiplier : 1,
+          bonusSecondsRemaining: Math.max(0, state.adRewards.bonusSecondsRemaining - deltaSeconds),
+          bonusMultiplier:
+            state.adRewards.bonusSecondsRemaining > deltaSeconds ? state.adRewards.bonusMultiplier : 1,
         },
       };
 
-      return applyTaxSeizure({
+      const updatedState = {
         ...nextState,
         economyEvent:
           nextState.economyEvent && nextState.economyEvent.secondsRemaining > 0
             ? nextState.economyEvent
             : undefined,
-      });
+      };
+
+      return earnedIncome > 0 ? applyTaxSeizure(updatedState) : updatedState;
     }
 
     case 'marketTick':
@@ -138,14 +153,11 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
     case 'upgradeBusiness': {
       const business = state.businesses.find((item) => item.id === action.id);
       const effectiveMaxLevel = business ? getEffectiveBusinessMaxLevel(business.maxLevel, state.prestigeCount) : 0;
-      if (
-        !business ||
-        (business.level <= 0 && state.level < business.unlockLevel) ||
-        business.level >= effectiveMaxLevel
-      ) return state;
+      if (!business || business.level >= effectiveMaxLevel) return state;
 
-      const cost = Math.round(business.basePrice * Math.pow(1.34, business.level));
-      if (state.cash < cost) return state;
+      const cost = getBusinessFoundingCost(business);
+      if (business.level <= 0 && !canFoundBusiness(business, state.cash, state.level)) return state;
+      if (business.level > 0 && state.cash < cost) return state;
 
       const upgraded = {
         ...state,
@@ -154,11 +166,11 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
           item.id === action.id
             ? {
                 ...item,
-                level: item.level + 1,
+                level: Math.min(BUSINESS_MAX_LEVEL, item.level + 1),
                 employees: item.employees + 2,
                 vehicles: item.vehicles + (isTransportBusiness(item) ? 1 : 0),
                 buildings: item.buildings + (item.level > 0 && item.level % 5 === 0 ? 1 : 0),
-                projectProgress: item.level <= 0 ? 1 : item.projectProgress,
+                projectProgress: item.level <= 0 ? 100 : item.projectProgress,
                 maintenance: Math.max(8, item.maintenance - 1),
                 reputation: Math.min(100, item.reputation + 1),
               }
@@ -169,10 +181,36 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
       return addXp(upgraded, 18);
     }
 
+    case 'sellBusiness': {
+      const business = state.businesses.find((item) => item.id === action.id);
+      if (!business || business.level <= 0) return state;
+
+      const resalePrice = getBusinessResalePrice(business);
+      const freshBusiness = buildBusinesses().find((item) => item.id === action.id);
+
+      return {
+        ...state,
+        cash: state.cash + resalePrice,
+        cashPopup: createCashPopup(resalePrice, 'Vente entreprise', state),
+        businesses: state.businesses.map((item) =>
+          item.id === action.id
+            ? {
+                ...(freshBusiness ?? item),
+                level: 0,
+                resources: 0,
+                projectProgress: 0,
+                enterpriseTaxDebt: 0,
+                synergyBonus: 0,
+              }
+            : item,
+        ),
+      };
+    }
+
     case 'buyOwnable': {
       const list = getOwnableList(state, action.category);
       const asset = list.find((item) => item.id === action.id);
-      if (!asset || asset.owned || state.level < asset.unlockLevel || state.cash < asset.price) {
+      if (!asset || asset.owned || !canBuyOwnable(asset, state.cash, state.level)) {
         return state;
       }
 
@@ -386,6 +424,7 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
           noAds: state.adRewards.noAds,
           rewardedAdsWatched: state.adRewards.rewardedAdsWatched,
           totalAdCashEarned: state.adRewards.totalAdCashEarned,
+          rewardedAdDailyLimit: state.adRewards.rewardedAdDailyLimit,
         },
         dailyRewards: state.dailyRewards,
       };
@@ -413,12 +452,23 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
 
     case 'claimRewardAd': {
       const stats = getStats(state);
-      const rewardCash =
-        action.reward === 'cash'
-          ? Math.max(25000, Math.floor(stats.totalIncome * 180))
-          : action.reward === 'skipTime'
-            ? Math.max(50000, Math.floor(stats.totalIncome * 600))
-            : 0;
+      const now = Date.now();
+      const cooldown = getAdCooldownRemaining(state.adRewards, now);
+      const watchedToday = getRewardedAdsWatchedToday(state.adRewards);
+
+      if (cooldown > 0 || watchedToday >= state.adRewards.rewardedAdDailyLimit) {
+        return {
+          ...state,
+          adRewards: {
+            ...state.adRewards,
+            lastRewardedAdStatus:
+              cooldown > 0 ? `Cooldown ${cooldown}s` : 'Limite journaliere atteinte',
+          },
+        };
+      }
+
+      const rewardCash = getRewardedAdRewardCash(action.reward, stats);
+      const rewardedAdDay = getDayKey();
 
       return {
         ...state,
@@ -429,10 +479,21 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
             ? createCashPopup(rewardCash, action.reward === 'skipTime' ? 'Skip temps' : 'Pub recompensee', state)
             : state.cashPopup,
         secondsPlayed: action.reward === 'skipTime' ? state.secondsPlayed + 600 : state.secondsPlayed,
+        passiveIncomeElapsed:
+          action.reward === 'skipTime'
+            ? (state.passiveIncomeElapsed + 600) % PASSIVE_PAYOUT_INTERVAL_SECONDS
+            : state.passiveIncomeElapsed,
         adRewards: {
           ...state.adRewards,
           rewardedAdsWatched: state.adRewards.rewardedAdsWatched + 1,
+          lastRewardedAdAt: now,
+          rewardedAdDay,
+          rewardedAdDailyCount:
+            state.adRewards.rewardedAdDay === rewardedAdDay
+              ? state.adRewards.rewardedAdDailyCount + 1
+              : 1,
           totalAdCashEarned: state.adRewards.totalAdCashEarned + rewardCash,
+          lastRewardedAdStatus: 'Reward validee',
           bonusMultiplier: action.reward === 'doubleIncome' ? 2 : state.adRewards.bonusMultiplier,
           bonusSecondsRemaining:
             action.reward === 'doubleIncome'
@@ -456,16 +517,18 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
       if (state.dailyRewards.lastDailyRewardDay === today) return state;
       const streak = state.dailyRewards.lastDailyRewardDay ? state.dailyRewards.streak + 1 : 1;
       const reward = 25000 * Math.min(streak, 30);
+      const label = 'Recompense quotidienne';
 
       return {
         ...state,
         cash: state.cash + reward,
         totalEarned: state.totalEarned + reward,
-        cashPopup: createCashPopup(reward, 'Reward journalier', state),
+        cashPopup: createCashPopup(reward, label, state),
         dailyRewards: {
           ...state.dailyRewards,
           streak,
           lastDailyRewardDay: today,
+          rewardHistory: appendRewardHistory(state, label, reward),
         },
       };
     }
@@ -474,15 +537,17 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
       const today = getDayKey();
       if (state.dailyRewards.lastChestDay === today) return state;
       const reward = Math.max(50000, Math.floor(getStats(state).totalIncome * 240));
+      const label = 'Coffre quotidien';
 
       return {
         ...state,
         cash: state.cash + reward,
         totalEarned: state.totalEarned + reward,
-        cashPopup: createCashPopup(reward, 'Coffre quotidien', state),
+        cashPopup: createCashPopup(reward, label, state),
         dailyRewards: {
           ...state.dailyRewards,
           lastChestDay: today,
+          rewardHistory: appendRewardHistory(state, label, reward),
         },
       };
     }
@@ -492,15 +557,17 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
       if (state.dailyRewards.lastWheelDay === today) return state;
       const rewards = [35000, 75000, 125000, Math.max(150000, Math.floor(getStats(state).totalIncome * 300))];
       const reward = rewards[(state.secondsPlayed + state.level + state.prestigeCount) % rewards.length];
+      const label = 'Roue de la chance';
 
       return {
         ...state,
         cash: state.cash + reward,
         totalEarned: state.totalEarned + reward,
-        cashPopup: createCashPopup(reward, 'Roue de la chance', state),
+        cashPopup: createCashPopup(reward, label, state),
         dailyRewards: {
           ...state.dailyRewards,
           lastWheelDay: today,
+          rewardHistory: appendRewardHistory(state, label, reward),
         },
       };
     }
@@ -509,15 +576,17 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
       const today = getDayKey();
       if (state.dailyRewards.lastConnectionBonusDay === today) return state;
       const reward = Math.max(15000, Math.floor(getStats(state).totalIncome * 120));
+      const label = 'Bonus de retour';
 
       return {
         ...state,
         cash: state.cash + reward,
         totalEarned: state.totalEarned + reward,
-        cashPopup: createCashPopup(reward, 'Bonus connexion', state),
+        cashPopup: createCashPopup(reward, label, state),
         dailyRewards: {
           ...state.dailyRewards,
           lastConnectionBonusDay: today,
+          rewardHistory: appendRewardHistory(state, label, reward),
         },
       };
     }
@@ -535,6 +604,7 @@ export const empireReducer = (state: EmpireState, action: EmpireAction): EmpireS
         cashPopup: createCashPopup(mission.reward, 'Mission quotidienne', state),
         dailyRewards: {
           ...state.dailyRewards,
+          rewardHistory: appendRewardHistory(state, mission.title, mission.reward),
           dailyMissions: state.dailyRewards.dailyMissions.map((item) =>
             item.id === action.id ? { ...item, claimedDay: today } : item,
           ),
@@ -557,20 +627,23 @@ const MAX_MARKET_VOLUME = 999000000000;
 const isTransportBusiness = (business: EmpireState['businesses'][number]) =>
   /Transport|Hospitalite/.test(business.sector) || /taxi|transport|concession|flotte/i.test(business.name);
 
-const simulateBusinesses = (businesses: EmpireState['businesses']) =>
+const simulateBusinesses = (businesses: EmpireState['businesses'], deltaSeconds: number) =>
   businesses.map((business) => {
     if (business.level <= 0) return business;
 
     const status = getEnterpriseStatus(business);
-    const resources = business.resources + getEnterpriseResourcesPerTick(business);
-    const maintenance = Math.min(100, business.maintenance + business.vehicles * 0.01 + business.buildings * 0.006);
+    const resources = business.resources + getEnterpriseResourcesPerTick(business) * deltaSeconds;
+    const maintenance = Math.min(
+      100,
+      business.maintenance + (business.vehicles * 0.01 + business.buildings * 0.006) * deltaSeconds,
+    );
     const projectProgress =
       status === 'suspendu'
         ? business.projectProgress
-        : Math.min(100, business.projectProgress + getEnterpriseProgressRate(business));
+        : Math.min(100, business.projectProgress + getEnterpriseProgressRate(business) * deltaSeconds);
     const completed = business.projectProgress < 100 && projectProgress >= 100;
     const enterpriseTaxDebt =
-      business.enterpriseTaxDebt + Math.floor(business.level * business.baseIncome * 0.012);
+      business.enterpriseTaxDebt + Math.floor(business.level * business.baseIncome * 0.012 * deltaSeconds);
     const auditHit = enterpriseTaxDebt > getEnterpriseTaxLimit(business) ? 8 : business.auditRisk > 0.1 ? 0.05 : 0;
 
     return {
@@ -593,8 +666,19 @@ const createCashPopup = (amount: number, label: string, state: EmpireState) => (
   nonce: state.secondsPlayed + Math.floor(Math.random() * 100000),
 });
 
-const maybeCreateEconomyEvent = (secondsPlayed: number) => {
-  if (secondsPlayed === 0 || secondsPlayed % 90 !== 0) return undefined;
+const appendRewardHistory = (state: EmpireState, label: string, amount: number) => [
+  {
+    id: `${Date.now()}-${label}`,
+    label,
+    amount,
+    claimedAt: Date.now(),
+  },
+  ...state.dailyRewards.rewardHistory,
+].slice(0, 8);
+
+const maybeCreateEconomyEvent = (previousSecond: number, nextSecond: number) => {
+  const secondsPlayed = Math.floor(nextSecond / 90) * 90;
+  if (secondsPlayed === 0 || Math.floor(previousSecond / 90) === Math.floor(nextSecond / 90)) return undefined;
   const events = [
     {
       id: `boom-${secondsPlayed}`,
@@ -642,7 +726,11 @@ const applyTaxSeizure = (state: EmpireState): EmpireState => {
     return state;
   }
 
-  const seizureAmount = Math.min(state.cash + state.bank, Math.ceil(state.taxDebt * 0.45));
+  const incomeBuffer = Math.max(10000, getStats(state).totalIncome * 10);
+  const availableAfterProtection = Math.max(0, state.cash + state.bank - incomeBuffer);
+  const seizureAmount = Math.min(availableAfterProtection, Math.ceil(state.taxDebt * 0.25));
+  if (seizureAmount <= 0) return state;
+
   const cashTaken = Math.min(state.cash, seizureAmount);
   const bankTaken = Math.min(state.bank, seizureAmount - cashTaken);
 
@@ -656,5 +744,5 @@ const applyTaxSeizure = (state: EmpireState): EmpireState => {
   };
 };
 
-const getEffectiveBusinessMaxLevel = (baseMaxLevel: number, prestigeCount: number) =>
-  baseMaxLevel + prestigeCount * 25;
+const getEffectiveBusinessMaxLevel = (baseMaxLevel: number, _prestigeCount: number) =>
+  Math.min(BUSINESS_MAX_LEVEL, baseMaxLevel);

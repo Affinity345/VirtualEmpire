@@ -1,5 +1,7 @@
 import { EmpireState, EmpireStats } from '@/game/types';
-import { getEnterpriseIncome } from '@/utils/enterprise';
+import { getEnterpriseIncome, getEnterpriseMaintenanceCost } from '@/utils/enterprise';
+
+export const PASSIVE_PAYOUT_INTERVAL_SECONDS = 40;
 
 export const getPrestigeMultiplier = (state: EmpireState) =>
   1 + state.totalPrestigePoints * 0.04 + state.prestigeCount * 0.03;
@@ -18,6 +20,11 @@ export const getStats = (state: EmpireState): EmpireStats => {
     (sum, business) => sum + getEnterpriseIncome(business, totalRevenueMultiplier),
     0,
   );
+  const maintenanceCost = state.businesses.reduce(
+    (sum, business) =>
+      sum + (business.level > 0 ? getEnterpriseMaintenanceCost(business) : 0),
+    0,
+  );
   const realEstateIncome = state.realEstate.reduce(
     (sum, item) => sum + (item.owned ? item.passiveIncome * totalRevenueMultiplier : 0),
     0,
@@ -31,11 +38,23 @@ export const getStats = (state: EmpireState): EmpireStats => {
     0,
   );
   const businessLevels = state.businesses.reduce((sum, business) => sum + business.level, 0);
+  const grossIncome = businessIncome + realEstateIncome;
+  const netIncomePerSecond = Math.max(0, grossIncome);
+  const passiveElapsed = state.passiveIncomeElapsed ?? 0;
+  const passivePayoutSecondsRemaining =
+    PASSIVE_PAYOUT_INTERVAL_SECONDS - (passiveElapsed % PASSIVE_PAYOUT_INTERVAL_SECONDS);
 
   return {
+    cash: state.cash,
     businessIncome,
     realEstateIncome,
-    totalIncome: businessIncome + realEstateIncome,
+    grossIncome,
+    maintenanceCost,
+    netIncomePerSecond,
+    totalIncome: netIncomePerSecond,
+    passivePayoutSecondsRemaining:
+      passivePayoutSecondsRemaining === 0 ? PASSIVE_PAYOUT_INTERVAL_SECONDS : passivePayoutSecondsRemaining,
+    nextPassivePayout: netIncomePerSecond * PASSIVE_PAYOUT_INTERVAL_SECONDS,
     marketValue,
     marketInvested,
     marketUnrealizedProfit,
@@ -63,7 +82,7 @@ export const getMetricValue = (
 
   switch (metric) {
     case 'cash':
-      return state.cash;
+      return stats.cash;
     case 'bank':
       return state.bank;
     case 'netWorth':

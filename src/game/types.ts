@@ -98,6 +98,7 @@ export type MarketAsset = {
 };
 
 export type AuthProvider = 'google' | 'apple';
+export type AdRewardType = 'cash' | 'doubleIncome' | 'skipTime';
 
 export type PlayerProfile = {
   id: string;
@@ -113,6 +114,12 @@ export type AdRewards = {
   bonusMultiplier: number;
   bonusSecondsRemaining: number;
   totalAdCashEarned: number;
+  lastRewardedAdAt?: number;
+  rewardedAdCooldownSeconds: number;
+  rewardedAdDailyCount: number;
+  rewardedAdDay?: string;
+  rewardedAdDailyLimit: number;
+  lastRewardedAdStatus?: string;
 };
 
 export type CashPopup = {
@@ -129,6 +136,13 @@ export type DailyMission = {
   claimedDay?: string;
 };
 
+export type RewardHistoryItem = {
+  id: string;
+  label: string;
+  amount: number;
+  claimedAt: number;
+};
+
 export type DailyRewards = {
   streak: number;
   lastDailyRewardDay?: string;
@@ -136,6 +150,7 @@ export type DailyRewards = {
   lastWheelDay?: string;
   lastConnectionBonusDay?: string;
   dailyMissions: DailyMission[];
+  rewardHistory: RewardHistoryItem[];
 };
 
 export type EconomyEvent = {
@@ -187,6 +202,7 @@ export type EmpireState = {
   xp: number;
   totalEarned: number;
   secondsPlayed: number;
+  passiveIncomeElapsed: number;
   businesses: BusinessAsset[];
   realEstate: OwnableAsset[];
   cars: OwnableAsset[];
@@ -198,9 +214,15 @@ export type EmpireState = {
 };
 
 export type EmpireStats = {
+  cash: number;
   businessIncome: number;
   realEstateIncome: number;
+  grossIncome: number;
+  maintenanceCost: number;
+  netIncomePerSecond: number;
   totalIncome: number;
+  passivePayoutSecondsRemaining: number;
+  nextPassivePayout: number;
   marketValue: number;
   marketInvested: number;
   marketUnrealizedProfit: number;

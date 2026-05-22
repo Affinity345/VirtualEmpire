@@ -29,9 +29,13 @@ export const createInitialState = (): EmpireState => ({
     bonusMultiplier: 1,
     bonusSecondsRemaining: 0,
     totalAdCashEarned: 0,
+    rewardedAdCooldownSeconds: 90,
+    rewardedAdDailyCount: 0,
+    rewardedAdDailyLimit: 12,
   },
   dailyRewards: {
     streak: 0,
+    rewardHistory: [],
     dailyMissions: [
       { id: 'income', title: 'Generer 100k de revenus', target: 100000, reward: 35000 },
       { id: 'invest', title: 'Posseder 3 investissements', target: 3, reward: 45000 },
@@ -42,6 +46,7 @@ export const createInitialState = (): EmpireState => ({
   xp: 0,
   totalEarned: 0,
   secondsPlayed: 0,
+  passiveIncomeElapsed: 0,
   businesses: buildBusinesses(),
   realEstate: buildRealEstate(),
   cars: buildCars(),

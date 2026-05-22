@@ -10,6 +10,7 @@ import { OwnableAsset } from '@/game/types';
 import { confirmAction } from '@/utils/confirmAction';
 import { formatMoney } from '@/utils/format';
 import { premium } from '@/utils/premiumTheme';
+import { canBuyOwnable, getOwnableBuyBlock, isOwnableLevelGated } from '@/utils/progression';
 import { getResalePrice } from '@/utils/resale';
 
 type WealthCategory =
@@ -49,7 +50,7 @@ export function WealthScreen({ cars, luxury, collections, cash, level, dispatch 
     [cars, category, collections, luxury],
   );
   const ownedItems = items.filter((item) => item.owned);
-  const unlockedItems = items.filter((item) => item.owned || level >= item.unlockLevel);
+  const availableItems = items.filter((item) => item.owned || !isOwnableLevelGated(item) || level >= item.unlockLevel);
   const ownedValue = ownedItems.reduce((sum, item) => sum + item.price, 0);
 
   return (
@@ -80,7 +81,7 @@ export function WealthScreen({ cars, luxury, collections, cash, level, dispatch 
       <PremiumCard style={styles.hero}>
         <View style={styles.summaryRow}>
           <SummaryMetric label="Possedes" value={`${ownedItems.length}/${items.length}`} />
-          <SummaryMetric label="Debloques" value={`${unlockedItems.length}/${items.length}`} />
+          <SummaryMetric label="Disponibles" value={`${availableItems.length}/${items.length}`} />
           <SummaryMetric label="Valeur" value={`€ ${formatMoney(ownedValue)}`} />
         </View>
       </PremiumCard>
@@ -112,8 +113,9 @@ function WealthItem({
   level: number;
   dispatch: React.Dispatch<EmpireAction>;
 }) {
-  const locked = !item.owned && level < item.unlockLevel;
-  const disabled = locked || cash < item.price;
+  const locked = !item.owned && isOwnableLevelGated(item) && level < item.unlockLevel;
+  const disabled = !item.owned && !canBuyOwnable(item, cash, level);
+  const buyBlock = getOwnableBuyBlock(item, cash, level);
   const resalePrice = getResalePrice(item.price);
   const accent = index % 3 === 0 ? 'Signature' : index % 3 === 1 ? 'Reserve' : 'Private vault';
   const sellItem = () =>
@@ -139,10 +141,11 @@ function WealthItem({
           <View style={styles.assetInfo}>
             <Text style={styles.assetName}>{item.name}</Text>
             <Text style={styles.meta}>{item.tier} - {item.rarity} - {accent}</Text>
-            {locked ? <Text style={styles.locked}>Debloque au niveau {item.unlockLevel}</Text> : null}
+            {locked ? <Text style={styles.locked}>Endgame niveau {item.unlockLevel}</Text> : null}
+            {!locked && buyBlock ? <Text style={styles.locked}>{buyBlock}</Text> : null}
           </View>
           <Text style={item.owned ? styles.owned : styles.price}>
-            {locked ? `Niv. ${item.unlockLevel}` : item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
+            {locked ? 'Endgame' : item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
           </Text>
         </View>
         <View style={styles.actionRow}>
@@ -188,24 +191,24 @@ const getWealthItems = (
     case 'cars':
       return cars;
     case 'jets':
-      return luxury.filter((item) => item.icon === 'G7' || /Jet|Helicoptere/i.test(item.name));
+      return luxury.filter((item) => item.icon === 'G7' || /Jet|Gulfstream|Bombardier|Falcon|Citation|Praetor|Aviation/i.test(item.name));
     case 'yachts':
-      return luxury.filter((item) => item.icon === 'YS' || /Yacht|Suite|Submersible/i.test(item.name));
+      return luxury.filter((item) => item.icon === 'YS' || /Yacht|Azimut|Sunseeker|Benetti|Lürssen|Oceanco|Suite|Submersible/i.test(item.name));
     case 'jewelry':
-      return luxury.filter((item) => /Montre|Diamant|Couronne|Bijou|Coffre|Salon/i.test(item.name));
+      return luxury.filter((item) => /Montre|Diamant|Couronne|Bijou|Collier|Rubis|Coffre|Salon/i.test(item.name));
     case 'art':
       return [
-        ...luxury.filter((item) => /Tableau/i.test(item.name)),
+        ...luxury.filter((item) => /Tableau|Sculpture|Art/i.test(item.name)),
         ...collections.filter((item) => /Toile|Sculpture/i.test(item.name)),
       ];
     case 'nft':
-      return collections.filter((item) => /Carte|Collection Or|Musee Prive/i.test(item.name));
+      return collections.filter((item) => /NFT|Crypto Art/i.test(item.name));
     case 'history':
       return collections.filter((item) =>
-        /Archive|Manuscrit|Sabre|Medaille|Piece Antique|Masque/i.test(item.name),
+        /Archive|Manuscrit|Sabre|Medaille|Pièce|Piece Antique|Objet historique|Masque/i.test(item.name),
       );
     case 'rare':
-      return collections.filter((item) => /Meteorite|Fossile|Vin|Rookie|Rare/i.test(item.name));
+      return collections.filter((item) => /Météorite|Meteorite|Fossile|Rookie|Rare|Collection rare|Vin/i.test(item.name));
   }
 };
 

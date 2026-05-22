@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import {
+  getAdCooldownRemaining,
+  getRewardedAdBlockReason,
+  getRewardedAdRewardCash,
+  getRewardedAdsWatchedToday,
+  showRewardedAd,
+} from '@/ads/adMob';
 import { EmpireButton } from '@/components/empire/EmpireButton';
 import { PremiumCard } from '@/components/empire/PremiumCard';
 import { SectionHeader } from '@/components/empire/SectionHeader';
 import { EmpireAction } from '@/game/reducer';
-import { EmpireState, EmpireStats } from '@/game/types';
+import { AdRewardType, EmpireState, EmpireStats } from '@/game/types';
 import { formatDuration, formatMoney } from '@/utils/format';
 import { premium } from '@/utils/premiumTheme';
 
@@ -18,10 +25,40 @@ type Props = {
 };
 
 export function ProfileScreen({ state, stats, dispatch, onSaveCloud, onRecoverCloud }: Props) {
+  const [adMessage, setAdMessage] = useState<string | undefined>();
+  const [loadingReward, setLoadingReward] = useState<AdRewardType | undefined>();
+  const [now, setNow] = useState(Date.now());
   const totalGoods =
     stats.realEstateOwned + stats.carsOwned + stats.luxuryOwned + stats.collectionsOwned;
   const profile = state.playerProfile;
   const bonusActive = state.adRewards.bonusSecondsRemaining > 0;
+  const cooldown = getAdCooldownRemaining(state.adRewards, now);
+  const watchedToday = getRewardedAdsWatchedToday(state.adRewards);
+  const blockReason = getRewardedAdBlockReason(state.adRewards, now);
+  const rewardCash = getRewardedAdRewardCash('cash', stats);
+  const skipCash = getRewardedAdRewardCash('skipTime', stats);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const requestReward = async (reward: AdRewardType) => {
+    const reason = getRewardedAdBlockReason(state.adRewards);
+    if (reason) {
+      setAdMessage(reason);
+      return;
+    }
+
+    setLoadingReward(reward);
+    const result = await showRewardedAd();
+    setLoadingReward(undefined);
+    setAdMessage(result.message);
+
+    if (result.completed) {
+      dispatch({ type: 'claimRewardAd', reward });
+    }
+  };
 
   return (
     <View style={styles.gap}>
@@ -38,15 +75,20 @@ export function ProfileScreen({ state, stats, dispatch, onSaveCloud, onRecoverCl
         </Text>
         <View style={styles.actions}>
           <EmpireButton
-            label="Google"
-            onPress={() => dispatch({ type: 'connectPlayer', provider: 'google' })}
+            label="Google bientôt disponible"
+            disabled
+            onPress={() => setAdMessage('Connexion Google bientôt disponible')}
           />
           <EmpireButton
-            label="Apple"
+            label="Apple bientôt disponible"
             tone="dark"
-            onPress={() => dispatch({ type: 'connectPlayer', provider: 'apple' })}
+            disabled
+            onPress={() => setAdMessage('Connexion Apple bientôt disponible')}
           />
         </View>
+        <Text style={styles.line}>
+          Connexion Google / Apple désactivée en alpha : architecture préparée, Firebase/Auth pas encore branché.
+        </Text>
         {profile ? (
           <View style={styles.actions}>
             <EmpireButton label="Sauvegarder cloud" onPress={onSaveCloud} />
@@ -68,30 +110,46 @@ export function ProfileScreen({ state, stats, dispatch, onSaveCloud, onRecoverCl
       <PremiumCard style={styles.adsCard}>
         <Text style={styles.cardTitle}>Bonus pubs</Text>
         <Text style={styles.line}>Pubs vues : {state.adRewards.rewardedAdsWatched}</Text>
+        <Text style={styles.line}>
+          {"Aujourd'hui"} : {watchedToday}/{state.adRewards.rewardedAdDailyLimit}
+        </Text>
         <Text style={styles.line}>Cash gagne : € {formatMoney(state.adRewards.totalAdCashEarned)}</Text>
         <Text style={styles.line}>
           Bonus x2 : {bonusActive ? `${state.adRewards.bonusSecondsRemaining}s` : 'inactif'}
         </Text>
+        <Text style={styles.line}>
+          Cooldown : {cooldown > 0 ? `${cooldown}s` : 'pret'}
+        </Text>
+        <Text style={styles.line}>
+          Reward cash : € {formatMoney(rewardCash)} - Skip temps : € {formatMoney(skipCash)}
+        </Text>
+        {adMessage || state.adRewards.lastRewardedAdStatus ? (
+          <Text style={styles.adStatus}>{adMessage ?? state.adRewards.lastRewardedAdStatus}</Text>
+        ) : null}
         <View style={styles.actions}>
           <EmpireButton
-            label="Pub recompensee"
-            onPress={() => dispatch({ type: 'claimRewardAd', reward: 'cash' })}
+            label={loadingReward === 'cash' ? 'Chargement...' : 'Pub recompensee'}
+            disabled={Boolean(blockReason) || Boolean(loadingReward)}
+            onPress={() => requestReward('cash')}
           />
           <EmpireButton
-            label="Bonus x2"
+            label={loadingReward === 'doubleIncome' ? 'Chargement...' : 'Bonus x2'}
             tone="dark"
-            onPress={() => dispatch({ type: 'claimRewardAd', reward: 'doubleIncome' })}
+            disabled={Boolean(blockReason) || Boolean(loadingReward)}
+            onPress={() => requestReward('doubleIncome')}
           />
         </View>
         <View style={styles.actions}>
           <EmpireButton
             label="Cash gratuit"
-            onPress={() => dispatch({ type: 'claimRewardAd', reward: 'cash' })}
+            disabled={Boolean(blockReason) || Boolean(loadingReward)}
+            onPress={() => requestReward('cash')}
           />
           <EmpireButton
-            label="Skip temps"
+            label={loadingReward === 'skipTime' ? 'Chargement...' : 'Skip temps'}
             tone="dark"
-            onPress={() => dispatch({ type: 'claimRewardAd', reward: 'skipTime' })}
+            disabled={Boolean(blockReason) || Boolean(loadingReward)}
+            onPress={() => requestReward('skipTime')}
           />
         </View>
         <EmpireButton
@@ -106,7 +164,7 @@ export function ProfileScreen({ state, stats, dispatch, onSaveCloud, onRecoverCl
         <Text style={styles.cardTitle}>Integrations mobiles</Text>
         <Text style={styles.line}>Google Sign-In : pret pour @react-native-google-signin/google-signin</Text>
         <Text style={styles.line}>Apple Sign-In : pret pour expo-apple-authentication</Text>
-        <Text style={styles.line}>AdMob : pret pour react-native-google-mobile-ads</Text>
+        <Text style={styles.line}>AdMob : architecture Rewarded Ads prête, vraie pub active seulement en build natif/dev-client</Text>
         <Text style={styles.line}>Achats integres : pret pour RevenueCat / react-native-purchases</Text>
       </PremiumCard>
     </View>
@@ -155,6 +213,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 8,
+  },
+  adStatus: {
+    color: premium.colors.goldBright,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 10,
   },
   actions: {
     flexDirection: 'row',

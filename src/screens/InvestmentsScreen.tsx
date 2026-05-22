@@ -10,6 +10,7 @@ import { MarketAsset, OwnableAsset } from '@/game/types';
 import { confirmAction } from '@/utils/confirmAction';
 import { formatMoney } from '@/utils/format';
 import { premium } from '@/utils/premiumTheme';
+import { canBuyOwnable, getOwnableBuyBlock, isOwnableLevelGated } from '@/utils/progression';
 import { getResalePrice } from '@/utils/resale';
 
 type InvestmentCategory = 'Action' | 'Crypto' | 'Immobilier';
@@ -42,7 +43,7 @@ export function InvestmentsScreen({
     () => market.filter((asset) => asset.type === category),
     [category, market],
   );
-  const unlockedRealEstate = realEstate.filter((item) => item.owned || level >= item.unlockLevel).length;
+  const availableRealEstate = realEstate.filter((item) => item.owned || !isOwnableLevelGated(item) || level >= item.unlockLevel).length;
   const portfolioValue = assets.reduce((sum, asset) => sum + asset.owned * asset.price, 0);
   const invested = assets.reduce((sum, asset) => sum + asset.invested, 0);
   const profit = portfolioValue - invested;
@@ -90,7 +91,7 @@ export function InvestmentsScreen({
           <Text style={styles.sectionLabel}>Biens immobiliers</Text>
           <PremiumCard style={styles.realEstateSummary}>
             <View style={styles.summaryGrid}>
-              <SummaryMetric label="Debloques" value={`${unlockedRealEstate}/${realEstate.length}`} />
+              <SummaryMetric label="Disponibles" value={`${availableRealEstate}/${realEstate.length}`} />
               <SummaryMetric
                 label="Revenu immo"
                 value={`€ ${formatMoney(
@@ -201,8 +202,9 @@ function RealEstateInvestmentRow({
   prestigeMultiplier: number;
   dispatch: React.Dispatch<EmpireAction>;
 }) {
-  const locked = !item.owned && level < item.unlockLevel;
-  const disabled = locked || cash < item.price;
+  const locked = !item.owned && isOwnableLevelGated(item) && level < item.unlockLevel;
+  const disabled = !item.owned && !canBuyOwnable(item, cash, level);
+  const buyBlock = getOwnableBuyBlock(item, cash, level);
   const resalePrice = getResalePrice(item.price);
   const sellItem = () =>
     confirmAction(
@@ -215,7 +217,7 @@ function RealEstateInvestmentRow({
     <PremiumCard
       disabled={!item.owned && disabled}
       onPress={
-        item.owned || locked
+        item.owned || disabled
           ? undefined
           : () => dispatch({ type: 'buyOwnable', category: 'realEstate', id: item.id })
       }>
@@ -233,11 +235,12 @@ function RealEstateInvestmentRow({
           <Text style={styles.income}>
             + € {formatMoney(item.passiveIncome * prestigeMultiplier)} / sec
           </Text>
-          {locked ? <Text style={styles.locked}>Debloque au niveau {item.unlockLevel}</Text> : null}
+          {locked ? <Text style={styles.locked}>Endgame niveau {item.unlockLevel}</Text> : null}
+          {!locked && buyBlock ? <Text style={styles.locked}>{buyBlock}</Text> : null}
         </View>
         <View style={styles.priceBox}>
           <Text style={item.owned ? styles.owned : styles.price}>
-            {locked ? `Niv. ${item.unlockLevel}` : item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
+            {locked ? 'Endgame' : item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
           </Text>
         </View>
       </View>

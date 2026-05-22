@@ -2,8 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { buildMarket } from '@/data/empireCatalog';
 import { SAVE_VERSION, createInitialState } from '@/game/initialState';
-import { getStats } from '@/game/selectors';
+import { PASSIVE_PAYOUT_INTERVAL_SECONDS, getStats } from '@/game/selectors';
 import { BusinessAsset, EmpireState, MarketAsset, OwnableAsset } from '@/game/types';
+import { BUSINESS_MAX_LEVEL } from '@/utils/progression';
 import { getEnterpriseProgressRate } from '@/utils/enterprise';
 
 const SAVE_KEY = 'virtual-empire/save-v1';
@@ -18,11 +19,11 @@ export const loadEmpireState = async (): Promise<EmpireState> => {
   try {
     const parsed = JSON.parse(raw) as EmpireState;
 
-    if (parsed.version !== SAVE_VERSION) {
-      return createInitialState();
+    if (!parsed.version || parsed.version <= SAVE_VERSION) {
+      return applyOfflineProgress(normalizeEmpireState(parsed));
     }
 
-    return applyOfflineProgress(normalizeEmpireState(parsed));
+    return createInitialState();
   } catch {
     return createInitialState();
   }
@@ -35,6 +36,9 @@ const normalizeEmpireState = (state: EmpireState): EmpireState => {
   return {
     ...fresh,
     ...state,
+    version: SAVE_VERSION,
+    cash: getCanonicalCash(state, fresh.cash),
+    passiveIncomeElapsed: state.passiveIncomeElapsed ?? fresh.passiveIncomeElapsed,
     taxDebt: state.taxDebt ?? 0,
     lastSeizureAmount: state.lastSeizureAmount ?? 0,
     seizureCount: state.seizureCount ?? 0,
@@ -43,8 +47,21 @@ const normalizeEmpireState = (state: EmpireState): EmpireState => {
     totalPrestigePoints: state.totalPrestigePoints ?? state.prestigePoints ?? 0,
     highestNetWorth: state.highestNetWorth ?? 0,
     playerProfile: state.playerProfile,
-    adRewards: state.adRewards ?? fresh.adRewards,
-    dailyRewards: state.dailyRewards ?? fresh.dailyRewards,
+    adRewards: {
+      ...fresh.adRewards,
+      ...state.adRewards,
+      rewardedAdCooldownSeconds:
+        state.adRewards?.rewardedAdCooldownSeconds ?? fresh.adRewards.rewardedAdCooldownSeconds,
+      rewardedAdDailyCount: state.adRewards?.rewardedAdDailyCount ?? 0,
+      rewardedAdDailyLimit:
+        state.adRewards?.rewardedAdDailyLimit ?? fresh.adRewards.rewardedAdDailyLimit,
+    },
+    dailyRewards: {
+      ...fresh.dailyRewards,
+      ...state.dailyRewards,
+      dailyMissions: state.dailyRewards?.dailyMissions ?? fresh.dailyRewards.dailyMissions,
+      rewardHistory: state.dailyRewards?.rewardHistory ?? [],
+    },
     economyEvent: state.economyEvent,
     cashPopup: state.cashPopup,
     offlineSummary: state.offlineSummary,
@@ -93,13 +110,13 @@ const mergeMarket = (fresh: MarketAsset[], saved: MarketAsset[]) =>
     };
   });
 
-const mergeBusinesses = (fresh: BusinessAsset[], saved: BusinessAsset[]) =>
-  fresh.map((business) => {
+const mergeBusinesses = (fresh: BusinessAsset[], saved: BusinessAsset[]) => {
+  const merged = fresh.map((business) => {
     const previous = saved.find((item) => item.id === business.id);
     return previous
       ? {
           ...business,
-          level: previous.level,
+          level: Math.min(previous.level, BUSINESS_MAX_LEVEL),
           employees: previous.employees ?? business.employees,
           vehicles: previous.vehicles ?? business.vehicles,
           buildings: previous.buildings ?? business.buildings,
@@ -116,6 +133,13 @@ const mergeBusinesses = (fresh: BusinessAsset[], saved: BusinessAsset[]) =>
         }
       : business;
   });
+  const freshIds = new Set(fresh.map((business) => business.id));
+  const legacyOwnedBusinesses = saved.filter(
+    (business) => !freshIds.has(business.id) && business.level > 0,
+  );
+
+  return [...merged, ...legacyOwnedBusinesses];
+};
 
 const mergeOwnables = (fresh: OwnableAsset[], saved: OwnableAsset[]) =>
   fresh.map((asset) => {
@@ -170,7 +194,10 @@ const applyOfflineProgress = (state: EmpireState): EmpireState => {
   if (secondsAway < 60) return state;
 
   const stats = getStats(state);
-  const cashEarned = Math.floor(stats.totalIncome * secondsAway * 0.65);
+  const totalPassiveElapsed = (state.passiveIncomeElapsed ?? 0) + secondsAway;
+  const completedPayouts = Math.floor(totalPassiveElapsed / PASSIVE_PAYOUT_INTERVAL_SECONDS);
+  const passiveIncomeElapsed = totalPassiveElapsed % PASSIVE_PAYOUT_INTERVAL_SECONDS;
+  const cashEarned = Math.floor(stats.nextPassivePayout * completedPayouts * 0.65);
   const taxesAdded = Math.floor(cashEarned * 0.08);
   let projectsCompleted = 0;
 
@@ -188,6 +215,7 @@ const applyOfflineProgress = (state: EmpireState): EmpireState => {
   return {
     ...state,
     cash: state.cash + cashEarned,
+    passiveIncomeElapsed,
     taxDebt: state.taxDebt + taxesAdded,
     totalEarned: state.totalEarned + cashEarned,
     businesses,
@@ -205,4 +233,30 @@ const applyOfflineProgress = (state: EmpireState): EmpireState => {
       nonce: Date.now(),
     },
   };
+};
+
+const getCanonicalCash = (state: EmpireState, fallback: number) => {
+  const legacyState = state as EmpireState & {
+    money?: number;
+    balance?: number;
+    wallet?: number;
+    playerCash?: number;
+  };
+  const candidates = [
+    state.cash,
+    legacyState.playerCash,
+    legacyState.wallet,
+    legacyState.balance,
+    legacyState.money,
+    fallback,
+  ];
+  const validValues = candidates.filter(
+    (value): value is number => typeof value === 'number' && Number.isFinite(value),
+  );
+  if (validValues.length === 0) return fallback;
+
+  const primaryCash = typeof state.cash === 'number' && Number.isFinite(state.cash) ? state.cash : undefined;
+  if (primaryCash && primaryCash > 0) return primaryCash;
+
+  return Math.max(...validValues, fallback);
 };

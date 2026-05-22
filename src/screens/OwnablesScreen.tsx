@@ -10,6 +10,7 @@ import { premium } from '@/utils/premiumTheme';
 import { EmpireAction } from '@/game/reducer';
 import { OwnableAsset, OwnableCategory } from '@/game/types';
 import { confirmAction } from '@/utils/confirmAction';
+import { canBuyOwnable, getOwnableBuyBlock, isOwnableLevelGated } from '@/utils/progression';
 import { getResalePrice } from '@/utils/resale';
 
 type Props = {
@@ -33,15 +34,15 @@ export function OwnablesScreen({
   prestigeMultiplier,
   dispatch,
 }: Props) {
-  const unlockedItems = items.filter((item) => item.owned || level >= item.unlockLevel).length;
+  const availableItems = items.filter((item) => item.owned || !isOwnableLevelGated(item) || level >= item.unlockLevel).length;
 
   return (
     <View style={styles.gap}>
       <SectionHeader title={title} subtitle={subtitle} />
       <View style={styles.summaryGrid}>
         <PremiumCard style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Debloques</Text>
-          <Text style={styles.summaryValue}>{unlockedItems}/{items.length}</Text>
+          <Text style={styles.summaryLabel}>Disponibles</Text>
+          <Text style={styles.summaryValue}>{availableItems}/{items.length}</Text>
         </PremiumCard>
         <PremiumCard style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Raretés</Text>
@@ -49,8 +50,9 @@ export function OwnablesScreen({
         </PremiumCard>
       </View>
       {items.map((item) => {
-        const locked = !item.owned && level < item.unlockLevel;
-        const disabled = locked || cash < item.price;
+        const locked = !item.owned && isOwnableLevelGated(item) && level < item.unlockLevel;
+        const disabled = !item.owned && !canBuyOwnable(item, cash, level);
+        const buyBlock = getOwnableBuyBlock(item, cash, level);
         const resalePrice = getResalePrice(item.price);
         const sellItem = () =>
           confirmAction(
@@ -64,7 +66,7 @@ export function OwnablesScreen({
             key={item.id}
             disabled={!item.owned && disabled}
             onPress={
-              item.owned || locked ? undefined : () => dispatch({ type: 'buyOwnable', category, id: item.id })
+              item.owned || disabled ? undefined : () => dispatch({ type: 'buyOwnable', category, id: item.id })
             }>
             <View style={styles.row}>
               <AssetVisual
@@ -80,11 +82,12 @@ export function OwnablesScreen({
                 {item.passiveIncome > 0 ? (
                   <Text style={styles.income}>+ € {formatMoney(item.passiveIncome * prestigeMultiplier)} / sec</Text>
                 ) : null}
-                {locked ? <Text style={styles.locked}>Debloque au niveau {item.unlockLevel}</Text> : null}
+                {locked ? <Text style={styles.locked}>Endgame niveau {item.unlockLevel}</Text> : null}
+                {!locked && buyBlock ? <Text style={styles.locked}>{buyBlock}</Text> : null}
               </View>
               <View style={styles.side}>
                 <Text style={item.owned ? styles.owned : styles.price}>
-                  {locked ? `Niv. ${item.unlockLevel}` : item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
+                  {locked ? 'Endgame' : item.owned ? 'Possede' : `€ ${formatMoney(item.price)}`}
                 </Text>
               </View>
             </View>

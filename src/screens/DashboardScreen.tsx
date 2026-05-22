@@ -8,6 +8,15 @@ import { SectionHeader } from '@/components/empire/SectionHeader';
 import { premium } from '@/utils/premiumTheme';
 import { EmpireAction } from '@/game/reducer';
 import { EmpireState, EmpireStats, EmpireTab } from '@/game/types';
+import { getBusinessFoundingCost } from '@/utils/progression';
+
+type RewardNotification = {
+  id: string;
+  title: string;
+  detail: string;
+  amount: number;
+  action: () => void;
+};
 
 type Props = {
   state: EmpireState;
@@ -25,6 +34,38 @@ export function DashboardScreen({ state, stats, onNavigate, onPrestige, dispatch
   const chestReady = state.dailyRewards.lastChestDay !== today;
   const wheelReady = state.dailyRewards.lastWheelDay !== today;
   const connectionReady = state.dailyRewards.lastConnectionBonusDay !== today;
+  const availableRewards: RewardNotification[] = [];
+  const alphaGuide = getAlphaGuide(state, stats, availableRewards.length);
+
+  if (dailyReady) {
+    availableRewards.push({
+      id: 'daily',
+      title: 'Récompense quotidienne',
+      detail: `Série ${state.dailyRewards.streak + 1} jour(s)`,
+      amount: 25000 * Math.min(state.dailyRewards.streak + 1, 30),
+      action: () => dispatch({ type: 'claimDailyReward' }),
+    });
+  }
+
+  if (connectionReady) {
+    availableRewards.push({
+      id: 'return',
+      title: 'Bonus de retour',
+      detail: 'Disponible maintenant',
+      amount: Math.max(15000, Math.floor(stats.totalIncome * 120)),
+      action: () => dispatch({ type: 'claimConnectionBonus' }),
+    });
+  }
+
+  if (chestReady) {
+    availableRewards.push({
+      id: 'chest',
+      title: 'Coffre quotidien',
+      detail: 'Bonus cash empire',
+      amount: Math.max(50000, Math.floor(stats.totalIncome * 240)),
+      action: () => dispatch({ type: 'openDailyChest' }),
+    });
+  }
 
   return (
     <View style={styles.gap}>
@@ -47,9 +88,59 @@ export function DashboardScreen({ state, stats, onNavigate, onPrestige, dispatch
 
       <SectionHeader title="Vue empire" subtitle="Les indicateurs principaux de rentabilite." />
 
+      <PremiumCard style={styles.alphaGuideCard}>
+        <View style={styles.alphaGuideTop}>
+          <Text style={styles.cardTitle}>Alpha Guide</Text>
+          <Text style={styles.alphaBadge}>Action rapide</Text>
+        </View>
+        <Text style={styles.alphaTitle}>{alphaGuide.title}</Text>
+        <Text style={styles.line}>{alphaGuide.detail}</Text>
+        <View style={styles.alphaMetrics}>
+          <MiniMetric label="Cash" value={`€ ${formatMoney(state.cash)}`} />
+          <MiniMetric label="Dans" value={`${Math.ceil(stats.passivePayoutSecondsRemaining)} sec`} />
+          <MiniMetric label="Prochain" value={`€ ${formatMoney(stats.nextPassivePayout)}`} />
+        </View>
+        <View style={styles.quickActions}>
+          <EmpireButton label={alphaGuide.primaryLabel} onPress={() => onNavigate(alphaGuide.primaryTab)} />
+          <EmpireButton label="Récompenses" tone="dark" onPress={() => onNavigate('dashboard')} />
+        </View>
+      </PremiumCard>
+
+      <PremiumCard style={availableRewards.length > 0 ? styles.notificationCard : undefined}>
+        <Text style={styles.cardTitle}>Notifications internes</Text>
+        {availableRewards.length > 0 ? (
+          <>
+            <Text style={styles.rewardAvailable}>Récompense disponible</Text>
+            {availableRewards.map((reward) => (
+              <View key={reward.id} style={styles.notificationRow}>
+                <View style={styles.notificationText}>
+                  <Text style={styles.dailyTitle}>{reward.title}</Text>
+                  <Text style={styles.line}>{reward.detail} - € {formatMoney(reward.amount)}</Text>
+                </View>
+                <EmpireButton label="Récupérer" onPress={reward.action} />
+              </View>
+            ))}
+          </>
+        ) : (
+          <Text style={styles.line}>Aucune récompense en attente.</Text>
+        )}
+        {state.dailyRewards.rewardHistory.length > 0 ? (
+          <View style={styles.historyBlock}>
+            <Text style={styles.historyTitle}>Historique</Text>
+            {state.dailyRewards.rewardHistory.slice(0, 5).map((reward) => (
+              <Text key={reward.id} style={styles.historyLine}>
+                {reward.label} : € {formatMoney(reward.amount)}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </PremiumCard>
+
       <View style={styles.grid}>
         <Stat label="Patrimoine" value={`€ ${formatMoney(stats.netWorth)}`} />
-        <Stat label="Revenu passif" value={`€ ${formatMoney(stats.totalIncome)} / sec`} />
+        <Stat label="Revenu / sec" value={`€ ${formatMoney(stats.netIncomePerSecond)} / sec`} />
+        <Stat label="Prochain paiement" value={`€ ${formatMoney(stats.nextPassivePayout)}`} />
+        <Stat label="Timer paiement" value={`${Math.ceil(stats.passivePayoutSecondsRemaining)} sec`} />
         <Stat label="Banque" value={`€ ${formatMoney(state.bank)}`} />
         <Stat label="Dette" value={`€ ${formatMoney(state.debt)}`} tone="danger" />
         <Stat label="Impots" value={`€ ${formatMoney(state.taxDebt)}`} tone={state.taxDebt > 0 ? 'danger' : undefined} />
@@ -172,6 +263,17 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'da
   );
 }
 
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.miniMetric}>
+      <Text style={styles.miniLabel}>{label}</Text>
+      <Text style={styles.miniValue} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   gap: {
     gap: 14,
@@ -267,6 +369,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
   },
+  alphaGuideCard: {
+    borderColor: premium.colors.lineStrong,
+    backgroundColor: premium.colors.panelElevated,
+  },
+  alphaGuideTop: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  alphaBadge: {
+    color: '#110D05',
+    backgroundColor: premium.colors.goldBright,
+    borderRadius: premium.radius.sm,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  alphaTitle: {
+    color: premium.colors.goldBright,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 10,
+  },
+  alphaMetrics: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  miniMetric: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: premium.colors.line,
+    borderRadius: premium.radius.sm,
+    padding: 9,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  miniLabel: {
+    color: premium.colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  miniValue: {
+    color: premium.colors.champagne,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 5,
+  },
   dangerLine: {
     color: premium.colors.danger,
     fontSize: 14,
@@ -283,6 +437,43 @@ const styles = StyleSheet.create({
   rewardCard: {
     borderColor: premium.colors.goldBright,
     backgroundColor: 'rgba(242, 200, 107, 0.10)',
+  },
+  notificationCard: {
+    borderColor: premium.colors.goldBright,
+    backgroundColor: 'rgba(242, 200, 107, 0.09)',
+  },
+  rewardAvailable: {
+    color: premium.colors.goldBright,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 8,
+    textTransform: 'uppercase',
+  },
+  notificationRow: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
+  },
+  notificationText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  historyBlock: {
+    marginTop: 14,
+  },
+  historyTitle: {
+    color: premium.colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  historyLine: {
+    color: premium.colors.muted,
+    fontSize: 12,
+    marginTop: 6,
   },
   eventCard: {
     borderColor: premium.colors.goldBright,
@@ -338,4 +529,61 @@ const getDailyMissionProgress = (
   if (id === 'income') return state.totalEarned;
   if (id === 'invest') return stats.marketUnits;
   return stats.realEstateOwned + stats.carsOwned + stats.luxuryOwned + stats.collectionsOwned;
+};
+
+const getAlphaGuide = (
+  state: EmpireState,
+  stats: EmpireStats,
+  rewardCount: number,
+): { title: string; detail: string; primaryLabel: string; primaryTab: EmpireTab } => {
+  if (rewardCount > 0) {
+    return {
+      title: `${rewardCount} récompense(s) à récupérer`,
+      detail: 'Récupère les bonus gratuits avant d’acheter ou améliorer. C’est le meilleur boost sans risque.',
+      primaryLabel: 'Voir accueil',
+      primaryTab: 'dashboard',
+    };
+  }
+
+  const affordableBusiness = state.businesses
+    .filter((business) => business.level <= 0)
+    .find((business) => state.cash >= getBusinessFoundingCost(business));
+
+  if (stats.businessLevels === 0 && affordableBusiness) {
+    return {
+      title: `Fonde ${affordableBusiness.name}`,
+      detail: `Coût € ${formatMoney(getBusinessFoundingCost(affordableBusiness))}. Premier objectif : créer un revenu automatique stable.`,
+      primaryLabel: 'Entreprise',
+      primaryTab: 'business',
+    };
+  }
+
+  const upgradeTarget = state.businesses
+    .filter((business) => business.level > 0 && business.level < 50)
+    .find((business) => state.cash >= getBusinessFoundingCost(business));
+
+  if (upgradeTarget) {
+    return {
+      title: `Améliore ${upgradeTarget.name}`,
+      detail: `Upgrade disponible à € ${formatMoney(getBusinessFoundingCost(upgradeTarget))}. Plus de niveaux = plus gros paiement toutes les 40 sec.`,
+      primaryLabel: 'Améliorer',
+      primaryTab: 'business',
+    };
+  }
+
+  if (stats.nextPassivePayout > 0) {
+    return {
+      title: `Prochain paiement : € ${formatMoney(stats.nextPassivePayout)}`,
+      detail: 'Attends le paiement passif, puis réinvestis dans Entreprise ou Investissements pour accélérer.',
+      primaryLabel: 'Investir',
+      primaryTab: 'investments',
+    };
+  }
+
+  return {
+    title: 'Démarre ton empire',
+    detail: 'Va dans Entreprise pour acheter une première activité, puis utilise les revenus pour diversifier.',
+    primaryLabel: 'Entreprise',
+    primaryTab: 'business',
+  };
 };

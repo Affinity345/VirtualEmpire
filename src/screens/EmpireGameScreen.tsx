@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AdMobBanner } from '@/components/ads/AdMobBanner';
 import { BottomNav } from '@/components/empire/BottomNav';
 import { EmpireButton } from '@/components/empire/EmpireButton';
 import { EmpireHeader } from '@/components/empire/EmpireHeader';
@@ -19,6 +20,7 @@ import { RealEstateScreen } from '@/screens/RealEstateScreen';
 import { StatsScreen } from '@/screens/StatsScreen';
 import { TradingScreen } from '@/screens/TradingScreen';
 import { WealthScreen } from '@/screens/WealthScreen';
+import { formatMoney } from '@/utils/format';
 import { premium } from '@/utils/premiumTheme';
 import { EmpireTab } from '@/game/types';
 import { useEmpireGame } from '@/game/useEmpireGame';
@@ -154,6 +156,7 @@ export function EmpireGameScreen() {
         </ScreenTransition>
       </ScrollView>
       <CashGainPopup popup={state.cashPopup} />
+      <AdMobBanner hidden={state.adRewards.noAds} />
       <BottomNav active={tab} onChange={setTab} />
     </View>
   );
@@ -262,6 +265,9 @@ function CashGainPopup({ popup }: { popup?: { amount: number; label: string; non
   useEffect(() => {
     if (!popup || popup.amount <= 0) return;
     setVisiblePopup(popup);
+    if (Platform.OS !== 'web') {
+      Vibration.vibrate(20);
+    }
     lift.setValue(0);
     Animated.timing(lift, {
       toValue: 1,
@@ -290,6 +296,7 @@ function CashGainPopup({ popup }: { popup?: { amount: number; label: string; non
 }
 
 const formatPopupMoney = (value: number) => {
+  if (value >= 1000000000) return formatMoney(value);
   if (value >= 1000000) return `${(value / 1000000).toFixed(2)}M`;
   if (value >= 1000) return Math.round(value).toLocaleString('fr-FR');
   return Math.round(value).toString();

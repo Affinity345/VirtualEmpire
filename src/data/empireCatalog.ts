@@ -1,16 +1,37 @@
 import { AssetRarity, BusinessAsset, MarketAsset, Mission, OwnableAsset } from '@/game/types';
 
 const businessSeeds = [
-  ['private-cafe', 'Cafe prive', 'Hospitalite', 'VC', 5000, 18, 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80'],
-  ['luxury-gym', 'Club fitness prestige', 'Bien-etre', 'FG', 28000, 105, 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=80'],
-  ['night-venue', 'Lounge nocturne', 'Divertissement', 'LN', 92000, 410, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80'],
-  ['boutique-hotel', 'Hotel boutique', 'Hotellerie', 'HB', 260000, 1250, 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80'],
-  ['media-studio', 'Studio media', 'Creation', 'SM', 780000, 3800, 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80'],
-  ['fintech-app', 'App fintech', 'Technologie', 'FT', 2200000, 11500, 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80'],
-  ['private-bank', 'Banque privee', 'Finance', 'BP', 8900000, 46000, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80'],
-  ['airline', 'Compagnie aerienne', 'Transport', 'CA', 36000000, 188000, 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=900&q=80'],
-  ['ai-lab', 'Laboratoire IA', 'Innovation', 'IA', 145000000, 820000, 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80'],
-  ['space-holdings', 'Groupe orbital', 'Aerospace', 'GO', 680000000, 4100000, 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=900&q=80'],
+  ['premium-restaurant', 'Restaurant signature', 'Restaurants', 'RS', 4500, 18, 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80'],
+  ['private-cafe', 'Cafe prive', 'Cafes', 'CP', 8200, 32, 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80'],
+  ['boutique-hotel', 'Hotel boutique', 'Hotels', 'HT', 26000, 95, 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80'],
+  ['luxury-gym', 'Club fitness prestige', 'Fitness', 'FT', 52000, 190, 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=80'],
+  ['taxi-fleet', 'Flotte taxi executive', 'Taxis', 'TX', 95000, 360, 'https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=900&q=80'],
+  ['logistics-hub', 'Hub transport premium', 'Transport', 'TR', 180000, 720, 'https://images.unsplash.com/photo-1494412519320-aa613dfb7738?auto=format&fit=crop&w=900&q=80'],
+  ['smart-factory', 'Usine intelligente', 'Usines', 'US', 360000, 1450, 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=900&q=80'],
+  ['construction-group', 'Groupe construction', 'Construction', 'GC', 720000, 3000, 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80'],
+  ['software-studio', 'Studio informatique', 'Informatique', 'SI', 1400000, 6400, 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80'],
+  ['private-bank', 'Banque privee', 'Banques', 'BP', 2900000, 13500, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80'],
+  ['retail-plaza', 'Galerie commerciale', 'Immobilier commercial', 'IC', 5600000, 27000, 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=900&q=80'],
+  ['energy-grid', 'Reseau energie', 'Energie', 'EN', 11000000, 56000, 'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=900&q=80'],
+  ['luxury-house', 'Maison luxe', 'Luxe', 'LX', 22000000, 118000, 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80'],
+  ['airline', 'Compagnie aviation', 'Aviation', 'AV', 43000000, 245000, 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=900&q=80'],
+  ['medical-network', 'Reseau sante privee', 'Sante', 'SP', 86000000, 520000, 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80'],
+  ['entertainment-studio', 'Studio divertissement', 'Divertissement', 'DV', 170000000, 1100000, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80'],
+  ['tech-campus', 'Campus technologie', 'Technologie', 'TC', 330000000, 2300000, 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80'],
+  ['ai-lab', 'Laboratoire IA', 'IA', 'IA', 640000000, 4900000, 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80'],
+  ['blockchain-protocol', 'Protocole blockchain', 'Blockchain', 'BC', 1250000000, 10500000, 'https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&w=900&q=80'],
+  ['orbital-venture', 'Venture orbital', 'Aerospace', 'OR', 2400000000, 22500000, 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=900&q=80'],
+  ['multinational-group', 'Multinationale empire', 'Multinationales', 'MN', 4800000000, 46000000, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80'],
+  ['sovereign-holding', 'Holding souveraine', 'Holdings', 'HD', 7200000000, 72000000, 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=900&q=80'],
+  ['quant-hedge-fund', 'Hedge fund quant', 'Hedge funds', 'HF', 10500000000, 118000000, 'https://images.unsplash.com/photo-1642790106117-e829e14a795f?auto=format&fit=crop&w=900&q=80'],
+  ['private-equity-office', 'Private equity office', 'Private equity', 'PE', 15500000000, 184000000, 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80'],
+  ['couture-maison', 'Maison de luxe mondiale', 'Marques de luxe', 'ML', 22000000000, 280000000, 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80'],
+  ['private-aviation-group', 'Aviation privee elite', 'Aviation privee', 'AP', 31000000000, 420000000, 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=900&q=80'],
+  ['ai-business-suite', 'IA business suite', 'IA business', 'IB', 44000000000, 660000000, 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=900&q=80'],
+  ['mega-commercial-estate', 'Mega parc commercial', 'Immobilier commercial geant', 'MG', 61000000000, 920000000, 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=900&q=80'],
+  ['global-franchise-network', 'Franchise mondiale', 'Franchises mondiales', 'FM', 84000000000, 1350000000, 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=900&q=80'],
+  ['unicorn-venture', 'Startup unicorn', 'Startups unicorn', 'SU', 115000000000, 1980000000, 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80'],
+  ['empire-conglomerate', 'Conglomerat imperial', 'Conglomerats', 'CG', 165000000000, 3100000000, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80'],
 ] as const;
 
 const ownableSeeds = {
@@ -132,55 +153,55 @@ const stableShuffle = <T,>(items: T[]) =>
     .sort((left, right) => left.score - right.score)
     .map(({ item }) => item);
 
-const businessNames = stableShuffle(
-  [
-    'Cafe Prive',
-    'Club Fitness',
-    'Lounge VIP',
-    'Hotel Boutique',
-    'Studio Media',
-    'App Fintech',
-    'Banque Privee',
-    'Compagnie Aerienne',
-    'Laboratoire IA',
-    'Groupe Spatial',
-    'Maison Couture',
-    'Fonds Capital',
-  ].flatMap((type) =>
-    [
-      'Monaco',
-      'Dubai',
-      'Tokyo',
-      'Paris',
-      'NYC',
-      'Singapore',
-      'London',
-      'Casablanca',
-      'Miami',
-      'Geneve',
-    ].map((city) => `${type} ${city}`),
-  ),
-);
+const businessCities = stableShuffle([
+  'Monaco',
+  'Dubai',
+  'Tokyo',
+  'Paris',
+  'NYC',
+  'Singapore',
+  'London',
+  'Casablanca',
+  'Miami',
+  'Geneve',
+  'Seoul',
+  'Riyadh',
+  'Marrakech',
+  'Los Angeles',
+  'Doha',
+]);
+
+const BUSINESS_VARIANTS_PER_SEED = 15;
+
+const getBusinessRarity = (rank: number): AssetRarity => {
+  if (rank >= 450) return 'Mythique';
+  if (rank >= 420) return 'Legendaire';
+  if (rank >= 260) return 'Epic';
+  if (rank >= 110) return 'Rare';
+  return 'Commun';
+};
 
 export const buildBusinesses = (): BusinessAsset[] =>
-  stableShuffle(
-    businessSeeds.flatMap((seed, cycle) =>
-      Array.from({ length: 12 }, (_, index) => {
-        const rank = cycle * 12 + index;
+  Array.from({ length: businessSeeds.length * BUSINESS_VARIANTS_PER_SEED }, (_, rank) => {
+        const seed = businessSeeds[rank % businessSeeds.length];
+        const index = Math.floor(rank / businessSeeds.length);
+        const seedIndex = rank % businessSeeds.length;
+        const isTransportSector = ['Taxis', 'Transport', 'Aviation', 'Aviation privee'].includes(seed[2]);
+        const economy = getBusinessEconomy(rank, seed[5]);
         return {
           id: `${seed[0]}-${index + 1}`,
-          name: businessNames[rank] ?? seed[1],
+          name: `${seed[1]} ${businessCities[index % businessCities.length]}`,
           sector: seed[2],
           icon: seed[3],
-          basePrice: Math.floor(seed[4] * Math.pow(1.34, index) * Math.pow(1.18, cycle)),
-          baseIncome: Math.floor(seed[5] * Math.pow(1.25, index) * Math.pow(1.14, cycle)),
+          basePrice: economy.basePrice,
+          baseIncome: economy.baseIncome,
           level: 0,
-          maxLevel: rank > 84 ? 160 : rank > 48 ? 120 : 80,
-          rarity: getRarity(rank),
+          maxLevel: 50,
+          rarity: getBusinessRarity(rank),
           unlockLevel: getUnlockLevel(rank),
-          employees: Math.max(1, Math.floor(seed[5] / 12) + cycle + index),
-          vehicles: seed[2] === 'Transport' ? Math.max(1, index + 1) : seed[2] === 'Hospitalite' ? Math.floor(index / 3) : 0,
-          buildings: Math.max(1, Math.floor(rank / 18) + 1),
+          employees: Math.max(2, 3 + Math.floor(rank / 24) + index * 2),
+          vehicles: isTransportSector ? Math.max(1, index + 1 + Math.floor(seedIndex / 5)) : Math.floor(index / 3),
+          buildings: Math.max(1, Math.floor(seedIndex / 5) + Math.floor(index / 3) + 1),
           resources: 0,
           projectName: getBusinessProjectName(seed[2]),
           projectProgress: 0,
@@ -194,19 +215,102 @@ export const buildBusinesses = (): BusinessAsset[] =>
           imageSlot: `businesses/${seed[0]}-${index + 1}`,
           imageUrl: getPremiumImageUrl('businesses', rank, seed[6]),
         };
-      }),
-    ),
-  );
+      });
+
+const businessPriceMilestones = [
+  500,
+  1200,
+  2500,
+  5000,
+  10000,
+  18000,
+  28000,
+  38000,
+  50000,
+] as const;
+
+const getBusinessEconomy = (rank: number, seedIncome: number) => {
+  const basePrice = getBusinessBasePrice(rank);
+  const roiSeconds = getBusinessTargetRoiSeconds(rank);
+  const seedFlavor = 0.95 + (seedIncome % 17) / 100;
+  return {
+    basePrice,
+    baseIncome: Math.max(1, Math.floor((basePrice / roiSeconds) * seedFlavor)),
+  };
+};
+
+const getBusinessBasePrice = (rank: number) => {
+  if (rank < businessPriceMilestones.length) return businessPriceMilestones[rank];
+  if (rank < 45) return interpolatePrice(rank, 9, 44, 50000, 1000000);
+  if (rank < 120) return interpolatePrice(rank, 45, 119, 1000000, 25000000);
+  if (rank < 210) return interpolatePrice(rank, 120, 209, 25000000, 500000000);
+  if (rank < 315) return interpolatePrice(rank, 210, 314, 500000000, 10000000000);
+
+  return interpolatePrice(rank, 315, businessSeeds.length * BUSINESS_VARIANTS_PER_SEED - 1, 10000000000, 55000000000);
+};
+
+const getBusinessTargetRoiSeconds = (rank: number) => {
+  if (rank < 45) return interpolateLinear(rank, 0, 44, 300, 600);
+  if (rank < 120) return interpolateLinear(rank, 45, 119, 600, 900);
+  if (rank < 210) return interpolateLinear(rank, 120, 209, 900, 1200);
+  if (rank < 315) return interpolateLinear(rank, 210, 314, 1200, 1500);
+  if (rank < 420) return interpolateLinear(rank, 315, 419, 1500, 1800);
+  return 1800;
+};
+
+const interpolateLinear = (
+  value: number,
+  startIndex: number,
+  endIndex: number,
+  startValue: number,
+  endValue: number,
+) => {
+  const progress = Math.max(0, Math.min(1, (value - startIndex) / Math.max(1, endIndex - startIndex)));
+  return Math.round(startValue + (endValue - startValue) * progress);
+};
+
+const interpolatePrice = (
+  value: number,
+  startIndex: number,
+  endIndex: number,
+  startPrice: number,
+  endPrice: number,
+) => {
+  const progress = Math.max(0, Math.min(1, (value - startIndex) / Math.max(1, endIndex - startIndex)));
+  return Math.round(startPrice * Math.pow(endPrice / startPrice, progress));
+};
 
 const getBusinessProjectName = (sector: string) => {
+  if (sector === 'Restaurants' || sector === 'Cafes') return 'Service premium';
+  if (sector === 'Hotels') return 'Ouverture suites';
+  if (sector === 'Fitness') return 'Abonnements elite';
+  if (sector === 'Taxis') return 'Rotation chauffeurs';
   if (sector === 'Technologie') return 'Sprint produit';
+  if (sector === 'Informatique') return 'Sprint produit';
   if (sector === 'Transport') return 'Rotation flotte';
-  if (sector === 'Hotellerie') return 'Ouverture premium';
-  if (sector === 'Finance') return 'Audit capital';
-  if (sector === 'Innovation') return 'Prototype IA';
+  if (sector === 'Usines') return 'Production automatisee';
+  if (sector === 'Construction') return 'Chantier premium';
+  if (sector === 'Banques') return 'Audit capital';
+  if (sector === 'Immobilier commercial') return 'Location boutiques';
+  if (sector === 'Energie') return 'Rendement reseau';
+  if (sector === 'Luxe') return 'Collection capsule';
+  if (sector === 'Aviation') return 'Lignes privees';
+  if (sector === 'Sante') return 'Clinique premium';
+  if (sector === 'Divertissement') return 'Production globale';
+  if (sector === 'IA') return 'Prototype IA';
+  if (sector === 'Blockchain') return 'Validation reseau';
   if (sector === 'Aerospace') return 'Module orbital';
-  if (sector === 'Creation') return 'Campagne media';
-  if (sector === 'Hospitalite') return 'Service client';
+  if (sector === 'Multinationales') return 'Expansion continentale';
+  if (sector === 'Holdings') return 'Allocation capital';
+  if (sector === 'Hedge funds') return 'Strategie quant';
+  if (sector === 'Private equity') return 'Acquisition cible';
+  if (sector === 'Marques de luxe') return 'Lancement maison';
+  if (sector === 'Aviation privee') return 'Flotte executive';
+  if (sector === 'IA business') return 'Automatisation board';
+  if (sector === 'Immobilier commercial geant') return 'Mega leasing';
+  if (sector === 'Franchises mondiales') return 'Deploiement global';
+  if (sector === 'Startups unicorn') return 'Scale-up mondial';
+  if (sector === 'Conglomerats') return 'Synergie empire';
   return 'Projet operationnel';
 };
 
@@ -225,17 +329,79 @@ const buildOwnables = (
         category,
         tier: rank > 96 ? 'Mythique' : rank > 60 ? 'Empire' : seed[2],
         icon: seed[3],
-        price: Math.floor(seed[4] * Math.pow(1.19, index) * Math.pow(1.32, seedIndex)),
-        passiveIncome:
-          seed[5] > 0 ? Math.floor(seed[5] * Math.pow(1.15, index) * Math.pow(1.18, seedIndex)) : 0,
+        price: getOwnablePrice(category, seedIndex, index),
+        passiveIncome: getOwnablePassiveIncome(category, seedIndex, index, seed[5]),
         owned: false,
         rarity: getRarity(rank),
         unlockLevel: getUnlockLevel(rank),
         imageSlot: `${category}/${seed[0]}-${index + 1}`,
         imageUrl: getPremiumImageUrl(category, rank, seed[6]),
       };
-    }),
-  );
+	    }),
+	  );
+
+const getOwnablePrice = (
+  category: OwnableAsset['category'],
+  seedIndex: number,
+  index: number,
+) => {
+  if (category === 'realEstate') {
+    const ranges = [
+      [80000, 500000],
+      [5000000, 50000000],
+      [800000, 10000000],
+      [100000000, 2000000000],
+      [50000000, 1200000000],
+    ] as const;
+    return getRangePrice(index, ranges[seedIndex]);
+  }
+
+  if (category === 'cars') {
+    const ranges = [
+      [50000, 300000],
+      [50000, 300000],
+      [300000, 1000000],
+      [300000, 1000000],
+      [1000000, 20000000],
+    ] as const;
+    return getRangePrice(index, ranges[seedIndex]);
+  }
+
+  if (category === 'luxury') {
+    const ranges = [
+      [50000, 300000],
+      [300000, 20000000],
+      [5000000, 80000000],
+      [2000000, 200000000],
+      [1000000, 30000000],
+    ] as const;
+    return getRangePrice(index, ranges[seedIndex]);
+  }
+
+  const collectionRanges = [
+    [10000, 500000],
+    [50000, 2000000],
+    [500000, 30000000],
+    [1000000, 25000000],
+    [2000000, 50000000],
+  ] as const;
+  return getRangePrice(index, collectionRanges[seedIndex]);
+};
+
+const getRangePrice = (index: number, range: readonly [number, number]) =>
+  interpolatePrice(index, 0, 23, range[0], range[1]);
+
+const getOwnablePassiveIncome = (
+  category: OwnableAsset['category'],
+  seedIndex: number,
+  index: number,
+  seedPassiveIncome: number,
+) => {
+  if (seedPassiveIncome <= 0) return 0;
+  const price = getOwnablePrice(category, seedIndex, index);
+  const roiSeconds = interpolateLinear(seedIndex * 24 + index, 0, 119, 900, 2400);
+  return Math.max(1, Math.floor(price / roiSeconds));
+};
 
 const realEstateNames = stableShuffle(
   [
@@ -367,12 +533,90 @@ const buildNamedOwnables = (
     name: names[index] ?? asset.name,
   }));
 
+const premiumLuxuryCatalog = [
+  ['Gulfstream G700', 'Jet privé', 'G7', 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Bombardier Global 7500', 'Jet privé', 'G7', 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Dassault Falcon 8X', 'Jet privé', 'G7', 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Cessna Citation Longitude', 'Jet privé', 'G7', 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Embraer Praetor 600', 'Jet privé', 'G7', 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Azimut Grande', 'Yacht', 'YS', 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Sunseeker 131', 'Yacht', 'YS', 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Benetti Oasis', 'Yacht', 'YS', 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Lürssen Mega Yacht', 'Yacht', 'YS', 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Oceanco Superyacht', 'Yacht', 'YS', 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Diamant bleu impérial', 'Bijoux', 'BD', 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Collier rubis royal', 'Bijoux', 'BD', 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Montre Rolex Daytona or', 'Bijoux', 'DX', 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Couronne maison souveraine', 'Bijoux', 'CR', 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Tableau prestige Monaco', 'Art', 'AR', 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Sculpture or contemporain', 'Art', 'AR', 'https://images.unsplash.com/photo-1564399579883-451a5d44ec08?auto=format&fit=crop&w=720&h=540&q=82'],
+] as const;
+
+const premiumCollectionCatalog = [
+  ['NFT Genesis Black Gold', 'NFT', 'NF', 'https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Crypto Art Sovereign', 'NFT', 'NF', 'https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Collection NFT Monaco', 'NFT', 'NF', 'https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Carte rookie signée', 'Collection rare', 'RC', 'https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Météorite noire rare', 'Collection rare', 'MT', 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Fossile noir musée privé', 'Collection rare', 'MT', 'https://images.unsplash.com/photo-1564399579883-451a5d44ec08?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Pièce antique impériale', 'Objet historique', 'PI', 'https://images.unsplash.com/photo-1605792657660-596af9009e82?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Archive royale historique', 'Objet historique', 'AR', 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Manuscrit secret dynastie', 'Objet historique', 'AR', 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=720&h=540&q=82'],
+  ['Sabre cérémoniel impérial', 'Objet historique', 'AR', 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=720&h=540&q=82'],
+] as const;
+
+const applyCuratedOwnables = (
+  items: OwnableAsset[],
+  catalog: readonly (readonly [string, string, string, string])[],
+) =>
+  items.map((item, index) => {
+    const curated = catalog[index];
+    return curated
+      ? {
+          ...item,
+          name: curated[0],
+          tier: curated[1],
+          icon: curated[2],
+          imageUrl: curated[3],
+        }
+      : item;
+  });
+
 export const buildRealEstate = () =>
   buildNamedOwnables('realEstate', ownableSeeds.realEstate, realEstateNames);
 export const buildCars = () => buildNamedOwnables('cars', ownableSeeds.cars, carNames);
-export const buildLuxury = () => buildNamedOwnables('luxury', ownableSeeds.luxury, luxuryNames);
+export const buildLuxury = () =>
+  applyCuratedOwnables(buildNamedOwnables('luxury', ownableSeeds.luxury, luxuryNames), premiumLuxuryCatalog)
+    .map(normalizeLuxuryAsset);
 export const buildCollections = () =>
-  buildNamedOwnables('collections', ownableSeeds.collections, collectionNames);
+  applyCuratedOwnables(buildNamedOwnables('collections', ownableSeeds.collections, collectionNames), premiumCollectionCatalog)
+    .map(normalizeCollectionAsset);
+
+const normalizeLuxuryAsset = (item: OwnableAsset, index: number): OwnableAsset => {
+  if (index < premiumLuxuryCatalog.length) return item;
+  const suffix = luxurySuffixes[index % luxurySuffixes.length];
+
+  if (item.icon === 'G7') return { ...item, name: `Jet privé ${suffix}`, tier: 'Jet privé' };
+  if (item.icon === 'YS') return { ...item, name: `Yacht premium ${suffix}`, tier: 'Yacht' };
+  if (item.icon === 'DX') return { ...item, name: `Montre luxe ${suffix}`, tier: 'Bijoux' };
+  if (item.icon === 'BD') return { ...item, name: `Diamant prestige ${suffix}`, tier: 'Bijoux' };
+  if (item.icon === 'CR') return { ...item, name: `Couronne royale ${suffix}`, tier: 'Bijoux' };
+
+  return item;
+};
+
+const normalizeCollectionAsset = (item: OwnableAsset, index: number): OwnableAsset => {
+  if (index < premiumCollectionCatalog.length) return item;
+  const suffix = luxurySuffixes[index % luxurySuffixes.length];
+
+  if (item.icon === 'PI') return { ...item, name: `Pièce antique ${suffix}`, tier: 'Objet historique' };
+  if (item.icon === 'RC') return { ...item, name: `Carte rare ${suffix}`, tier: 'Collection rare' };
+  if (item.icon === 'TM') return { ...item, name: `Toile de maître ${suffix}`, tier: 'Art' };
+  if (item.icon === 'MT') return { ...item, name: `Météorite rare ${suffix}`, tier: 'Collection rare' };
+  if (item.icon === 'AR') return { ...item, name: `Archive historique ${suffix}`, tier: 'Objet historique' };
+
+  return item;
+};
 
 const luxurySuffixes = [
   'Noir',
@@ -452,7 +696,7 @@ export const buildMarket = (): MarketAsset[] =>
   investmentSeeds.flatMap((seed) =>
     investmentSeries.map((series, index) => {
       const rawPrice = seed[4] * Math.pow(1.11, index);
-      const price = rawPrice < 1 ? Number(rawPrice.toPrecision(3)) : Math.floor(rawPrice);
+      const typedPrice = getInvestmentPrice(seed[2], rawPrice);
       const symbol = index === 0 ? seed[3] : `${seed[3]}${index + 1}`;
 
       return {
@@ -460,9 +704,9 @@ export const buildMarket = (): MarketAsset[] =>
         name: index === 0 ? seed[1] : `${seed[1]} ${series}`,
         type: seed[2],
         symbol,
-        price,
-        previousPrice: price,
-        dayOpen: price,
+        price: typedPrice,
+        previousPrice: typedPrice,
+        dayOpen: typedPrice,
         owned: 0,
         averageCost: 0,
         invested: 0,
@@ -477,6 +721,13 @@ export const buildMarket = (): MarketAsset[] =>
       };
     }),
   );
+
+const getInvestmentPrice = (type: MarketAsset['type'], rawPrice: number) => {
+  if (type === 'Action') return Math.min(1000, Math.max(50, Math.floor(rawPrice)));
+  if (type === 'Immobilier') return Math.min(10000, Math.max(100, Math.floor(rawPrice)));
+  if (rawPrice < 1) return Number(rawPrice.toPrecision(3));
+  return Math.floor(rawPrice);
+};
 
 export const buildMissions = (): Mission[] => [
   { id: 'cash-100k', title: 'Atteindre 100 000 cash', reward: 6000, target: 100000, metric: 'cash', claimed: false },

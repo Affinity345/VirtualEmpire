@@ -1,18 +1,23 @@
 import { BusinessAsset } from '@/game/types';
+import { getBusinessLevelBonus } from '@/utils/progression';
 
-export type EnterpriseStatus = 'rentable' | 'attente' | 'suspendu' | 'construction';
+export type EnterpriseStatus = 'non_fondee' | 'rentable' | 'attente' | 'suspendu' | 'construction';
 
 export const getEnterpriseStatus = (business: BusinessAsset): EnterpriseStatus => {
-  if (business.level <= 0) return 'attente';
+  if (business.level <= 0) return 'non_fondee';
   if (business.enterpriseTaxDebt >= getEnterpriseTaxLimit(business) || business.reputation < 25) {
     return 'suspendu';
   }
-  if (business.projectProgress > 0 && business.projectProgress < 100) return 'construction';
+  if (business.employees <= 0 || business.buildings <= 0) return 'attente';
+  if (business.projectProgress > 0 && business.projectProgress < 100 && getEnterpriseEfficiency(business) <= 0.25) {
+    return 'construction';
+  }
   return 'rentable';
 };
 
 export const getEnterpriseStatusLabel = (status: EnterpriseStatus) => {
-  if (status === 'rentable') return 'Rentable';
+  if (status === 'non_fondee') return 'A fonder';
+  if (status === 'rentable') return 'Active';
   if (status === 'attente') return 'En attente';
   if (status === 'suspendu') return 'Suspendue';
   return 'Construction';
@@ -24,6 +29,8 @@ export const getEnterpriseCause = (business: BusinessAsset) => {
     return `Dette fiscale entreprise : € ${Math.floor(business.enterpriseTaxDebt).toLocaleString('fr-FR')}`;
   }
   if (business.reputation < 25) return 'Reputation trop faible. Regle les audits et stabilise les operations.';
+  if (business.employees <= 0) return 'Employes manquants.';
+  if (business.buildings <= 0) return 'Batiment manquant.';
   if (business.projectProgress < 100) return `${business.projectName} en cours.`;
   return 'Operations automatiques actives.';
 };
@@ -45,7 +52,8 @@ export const getEnterpriseIncome = (business: BusinessAsset, multiplier: number)
   if (status === 'suspendu' || status === 'attente') return 0;
   const projectBonus = business.projectProgress >= 100 ? 1.18 : 1;
   const synergyBonus = 1 + business.synergyBonus;
-  return business.level * business.baseIncome * getEnterpriseEfficiency(business) * projectBonus * synergyBonus * multiplier;
+  const levelBonus = getBusinessLevelBonus(business.level);
+  return business.level * business.baseIncome * levelBonus * getEnterpriseEfficiency(business) * projectBonus * synergyBonus * multiplier;
 };
 
 export const getEnterpriseProgressRate = (business: BusinessAsset) => {
