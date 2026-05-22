@@ -7,8 +7,9 @@ import { PremiumCard } from '@/components/empire/PremiumCard';
 import { SectionHeader } from '@/components/empire/SectionHeader';
 import { premium } from '@/utils/premiumTheme';
 import { EmpireAction } from '@/game/reducer';
-import { EmpireState, EmpireStats, EmpireTab } from '@/game/types';
+import { BusinessAsset, EmpireState, EmpireStats, EmpireTab, MarketAsset } from '@/game/types';
 import { getBusinessFoundingCost } from '@/utils/progression';
+import { getEnterpriseIncome } from '@/utils/enterprise';
 
 type RewardNotification = {
   id: string;
@@ -545,29 +546,44 @@ const getAlphaGuide = (
     };
   }
 
-  const affordableBusiness = state.businesses
-    .filter((business) => business.level <= 0)
-    .find((business) => state.cash >= getBusinessFoundingCost(business));
+  const bestBusinessBuy = findBestBusinessBuy(state, stats);
 
-  if (stats.businessLevels === 0 && affordableBusiness) {
+  if (stats.businessLevels === 0 && bestBusinessBuy) {
     return {
-      title: `Fonde ${affordableBusiness.name}`,
-      detail: `Coût € ${formatMoney(getBusinessFoundingCost(affordableBusiness))}. Premier objectif : créer un revenu automatique stable.`,
+      title: `Fonde ${bestBusinessBuy.business.name}`,
+      detail: `Coût € ${formatMoney(bestBusinessBuy.cost)}. Paiement estimé toutes les 40 sec : € ${formatMoney(bestBusinessBuy.payout40)}.`,
       primaryLabel: 'Entreprise',
       primaryTab: 'business',
     };
   }
 
-  const upgradeTarget = state.businesses
-    .filter((business) => business.level > 0 && business.level < 50)
-    .find((business) => state.cash >= getBusinessFoundingCost(business));
+  const upgradeTarget = findBestBusinessUpgrade(state, stats);
 
   if (upgradeTarget) {
     return {
-      title: `Améliore ${upgradeTarget.name}`,
-      detail: `Upgrade disponible à € ${formatMoney(getBusinessFoundingCost(upgradeTarget))}. Plus de niveaux = plus gros paiement toutes les 40 sec.`,
+      title: `Améliore ${upgradeTarget.business.name}`,
+      detail: `Meilleur ROI actuel : +€ ${formatMoney(upgradeTarget.gainPerSecond)} / sec pour € ${formatMoney(upgradeTarget.cost)}.`,
       primaryLabel: 'Améliorer',
       primaryTab: 'business',
+    };
+  }
+
+  if (bestBusinessBuy) {
+    return {
+      title: `Nouvelle activité rentable`,
+      detail: `${bestBusinessBuy.business.name} peut ajouter environ € ${formatMoney(bestBusinessBuy.payout40)} toutes les 40 sec.`,
+      primaryLabel: 'Acheter',
+      primaryTab: 'business',
+    };
+  }
+
+  const investmentTarget = findBestInvestment(state);
+  if (investmentTarget && state.cash >= investmentTarget.price) {
+    return {
+      title: `Investissement intéressant`,
+      detail: `${investmentTarget.name} est en momentum positif. Prix actuel : € ${formatMoney(investmentTarget.price)}.`,
+      primaryLabel: 'Investir',
+      primaryTab: 'investments',
     };
   }
 
@@ -587,3 +603,53 @@ const getAlphaGuide = (
     primaryTab: 'business',
   };
 };
+
+const findBestBusinessBuy = (state: EmpireState, stats: EmpireStats) =>
+  state.businesses
+    .filter((business) => business.level <= 0)
+    .map((business) => {
+      const cost = getBusinessFoundingCost(business);
+      const income = getEnterpriseIncome({ ...business, level: 1, projectProgress: 100 }, stats.totalRevenueMultiplier);
+      return {
+        business,
+        cost,
+        payout40: income * 40,
+        score: income / Math.max(1, cost),
+      };
+    })
+    .filter((item) => state.cash >= item.cost)
+    .sort((left, right) => right.score - left.score)[0];
+
+const findBestBusinessUpgrade = (state: EmpireState, stats: EmpireStats) =>
+  state.businesses
+    .filter((business) => business.level > 0 && business.level < 50)
+    .map((business) => {
+      const cost = getBusinessFoundingCost(business);
+      const currentIncome = getEnterpriseIncome(business, stats.totalRevenueMultiplier);
+      const nextIncome = getEnterpriseIncome(getBusinessAfterUpgrade(business), stats.totalRevenueMultiplier);
+      const gainPerSecond = Math.max(0, nextIncome - currentIncome);
+      return {
+        business,
+        cost,
+        gainPerSecond,
+        score: gainPerSecond / Math.max(1, cost),
+      };
+    })
+    .filter((item) => state.cash >= item.cost && item.gainPerSecond > 0)
+    .sort((left, right) => right.score - left.score)[0];
+
+const getBusinessAfterUpgrade = (business: BusinessAsset): BusinessAsset => ({
+  ...business,
+  level: Math.min(50, business.level + 1),
+  employees: business.employees + 2,
+  vehicles:
+    business.vehicles +
+    (/Transport|Hospitalite/.test(business.sector) || /taxi|transport|concession|flotte/i.test(business.name) ? 1 : 0),
+  buildings: business.buildings + (business.level > 0 && business.level % 5 === 0 ? 1 : 0),
+  projectProgress: business.level <= 0 ? 100 : business.projectProgress,
+});
+
+const findBestInvestment = (state: EmpireState): MarketAsset | undefined =>
+  state.market
+    .filter((asset) => asset.price > 0 && asset.momentum > 0 && asset.price <= state.cash)
+    .sort((left, right) => right.momentum - left.momentum)[0];

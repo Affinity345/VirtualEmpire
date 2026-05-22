@@ -271,7 +271,7 @@ function CashGainPopup({ popup }: { popup?: { amount: number; label: string; non
     lift.setValue(0);
     Animated.timing(lift, {
       toValue: 1,
-      duration: 1200,
+      duration: 1450,
       useNativeDriver: true,
     }).start();
   }, [lift, popup]);
@@ -284,11 +284,15 @@ function CashGainPopup({ popup }: { popup?: { amount: number; label: string; non
   });
   const translateY = lift.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -54],
+    outputRange: [0, -68],
+  });
+  const scale = lift.interpolate({
+    inputRange: [0, 0.16, 1],
+    outputRange: [0.94, 1.05, 1],
   });
 
   return (
-    <Animated.View style={[styles.cashPopup, { opacity, transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.cashPopup, { opacity, transform: [{ translateY }, { scale }] }]}>
       <Text style={styles.cashPopupText}>+ € {formatPopupMoney(visiblePopup.amount)}</Text>
       <Text style={styles.cashPopupLabel}>{visiblePopup.label}</Text>
     </Animated.View>

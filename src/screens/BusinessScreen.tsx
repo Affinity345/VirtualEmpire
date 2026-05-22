@@ -26,6 +26,7 @@ import {
   getBusinessMilestoneLabel,
   getBusinessResalePrice,
 } from '@/utils/progression';
+import { PASSIVE_PAYOUT_INTERVAL_SECONDS } from '@/game/selectors';
 
 const AVAILABLE_PAGE_SIZE = 48;
 const investorSectors = new Set([
@@ -385,7 +386,7 @@ function EnterpriseRow({
               price={upgradeCost}
               income={income}
               incomeGain={incomeGain}
-              roiSeconds={upgradeCost / Math.max(1, income)}
+              roiSeconds={upgradeCost / Math.max(1, Math.max(1, incomeGain))}
               level={business.level}
               category={business.sector}
               status={getEnterpriseStatusLabel(status)}
@@ -440,8 +441,9 @@ function BusinessFacts({
       <Fact label={priceLabel} value={formatBusinessPrice(price)} />
       <Fact label="Niveau" value={`${Math.min(level, BUSINESS_MAX_LEVEL)}/${BUSINESS_MAX_LEVEL}`} tone={level >= BUSINESS_MAX_LEVEL ? 'gold' : undefined} />
       <Fact label="Revenu/sec" value={`€ ${formatMoney(income)}`} tone="success" />
+      <Fact label="Revenu/40s" value={`€ ${formatMoney(income * PASSIVE_PAYOUT_INTERVAL_SECONDS)}`} tone="success" />
       <Fact label="Gain upgrade" value={`+€ ${formatMoney(incomeGain)} / sec`} tone="success" />
-      <Fact label="Rentable en" value={formatBusinessRoi(roiSeconds)} tone="gold" />
+      <Fact label="ROI estimé" value={formatBusinessRoi(roiSeconds)} tone="gold" />
       <Fact label="Categorie" value={category} />
       <Fact label="Statut" value={status} />
       <Fact label="Rarete" value={rarity} tone="gold" />

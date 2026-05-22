@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AssetVisual } from '@/components/empire/AssetVisual';
@@ -29,6 +29,8 @@ const categories: { id: InvestmentCategory; label: string }[] = [
   { id: 'Crypto', label: 'Crypto' },
   { id: 'Immobilier', label: 'Immobilier' },
 ];
+const INVESTMENT_PAGE_SIZE = 36;
+const REAL_ESTATE_PAGE_SIZE = 24;
 
 export function InvestmentsScreen({
   market,
@@ -39,15 +41,27 @@ export function InvestmentsScreen({
   dispatch,
 }: Props) {
   const [category, setCategory] = useState<InvestmentCategory>('Action');
+  const [visibleAssetCount, setVisibleAssetCount] = useState(INVESTMENT_PAGE_SIZE);
+  const [visibleRealEstateCount, setVisibleRealEstateCount] = useState(REAL_ESTATE_PAGE_SIZE);
   const assets = useMemo(
     () => market.filter((asset) => asset.type === category),
     [category, market],
+  );
+  const visibleAssets = useMemo(() => assets.slice(0, visibleAssetCount), [assets, visibleAssetCount]);
+  const visibleRealEstate = useMemo(
+    () => realEstate.slice(0, visibleRealEstateCount),
+    [realEstate, visibleRealEstateCount],
   );
   const availableRealEstate = realEstate.filter((item) => item.owned || !isOwnableLevelGated(item) || level >= item.unlockLevel).length;
   const portfolioValue = assets.reduce((sum, asset) => sum + asset.owned * asset.price, 0);
   const invested = assets.reduce((sum, asset) => sum + asset.invested, 0);
   const profit = portfolioValue - invested;
   const ownedCount = assets.filter((asset) => asset.owned > 0).length;
+
+  useEffect(() => {
+    setVisibleAssetCount(INVESTMENT_PAGE_SIZE);
+    setVisibleRealEstateCount(REAL_ESTATE_PAGE_SIZE);
+  }, [category]);
 
   return (
     <View style={styles.gap}>
@@ -107,7 +121,7 @@ export function InvestmentsScreen({
               />
             </View>
           </PremiumCard>
-          {realEstate.map((item) => (
+          {visibleRealEstate.map((item) => (
             <RealEstateInvestmentRow
               key={item.id}
               item={item}
@@ -117,13 +131,29 @@ export function InvestmentsScreen({
               dispatch={dispatch}
             />
           ))}
+          {visibleRealEstate.length < realEstate.length ? (
+            <EmpireButton
+              label={`Charger plus d'immo (${visibleRealEstate.length}/${realEstate.length})`}
+              tone="dark"
+              onPress={() =>
+                setVisibleRealEstateCount((current) => Math.min(realEstate.length, current + REAL_ESTATE_PAGE_SIZE))
+              }
+            />
+          ) : null}
           <Text style={styles.sectionLabel}>Fonds immobiliers live</Text>
         </>
       ) : null}
 
-      {assets.map((asset) => (
+      {visibleAssets.map((asset) => (
         <InvestmentRow key={asset.id} asset={asset} cash={cash} dispatch={dispatch} />
       ))}
+      {visibleAssets.length < assets.length ? (
+        <EmpireButton
+          label={`Charger plus d'actifs (${visibleAssets.length}/${assets.length})`}
+          tone="dark"
+          onPress={() => setVisibleAssetCount((current) => Math.min(assets.length, current + INVESTMENT_PAGE_SIZE))}
+        />
+      ) : null}
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AssetVisual } from '@/components/empire/AssetVisual';
@@ -42,6 +42,7 @@ const categories: { id: WealthCategory; label: string }[] = [
   { id: 'rare', label: 'Collections rares' },
   { id: 'history', label: 'Objets historiques' },
 ];
+const WEALTH_PAGE_SIZE = 36;
 
 export function WealthScreen({ cars, luxury, collections, cash, level, dispatch }: Props) {
   const [category, setCategory] = useState<WealthCategory>('cars');
@@ -51,7 +52,13 @@ export function WealthScreen({ cars, luxury, collections, cash, level, dispatch 
   );
   const ownedItems = items.filter((item) => item.owned);
   const availableItems = items.filter((item) => item.owned || !isOwnableLevelGated(item) || level >= item.unlockLevel);
+  const [visibleCount, setVisibleCount] = useState(WEALTH_PAGE_SIZE);
+  const visibleItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
   const ownedValue = ownedItems.reduce((sum, item) => sum + item.price, 0);
+
+  useEffect(() => {
+    setVisibleCount(WEALTH_PAGE_SIZE);
+  }, [category]);
 
   return (
     <View style={styles.gap}>
@@ -86,7 +93,7 @@ export function WealthScreen({ cars, luxury, collections, cash, level, dispatch 
         </View>
       </PremiumCard>
 
-      {items.map((item, index) => (
+      {visibleItems.map((item, index) => (
         <WealthItem
           key={item.id}
           item={item}
@@ -96,6 +103,13 @@ export function WealthScreen({ cars, luxury, collections, cash, level, dispatch 
           dispatch={dispatch}
         />
       ))}
+      {visibleItems.length < items.length ? (
+        <EmpireButton
+          label={`Charger plus (${visibleItems.length}/${items.length})`}
+          tone="dark"
+          onPress={() => setVisibleCount((current) => Math.min(items.length, current + WEALTH_PAGE_SIZE))}
+        />
+      ) : null}
     </View>
   );
 }

@@ -250,11 +250,11 @@ const getBusinessBasePrice = (rank: number) => {
 };
 
 const getBusinessTargetRoiSeconds = (rank: number) => {
-  if (rank < 45) return interpolateLinear(rank, 0, 44, 300, 600);
-  if (rank < 120) return interpolateLinear(rank, 45, 119, 600, 900);
-  if (rank < 210) return interpolateLinear(rank, 120, 209, 900, 1200);
-  if (rank < 315) return interpolateLinear(rank, 210, 314, 1200, 1500);
-  if (rank < 420) return interpolateLinear(rank, 315, 419, 1500, 1800);
+  if (rank < 12) return interpolateLinear(rank, 0, 11, 180, 300);
+  if (rank < 45) return interpolateLinear(rank, 12, 44, 300, 480);
+  if (rank < 120) return interpolateLinear(rank, 45, 119, 540, 900);
+  if (rank < 210) return interpolateLinear(rank, 120, 209, 900, 1260);
+  if (rank < 315) return interpolateLinear(rank, 210, 314, 1260, 1620);
   return 1800;
 };
 
